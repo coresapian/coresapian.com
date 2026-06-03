@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy &middot; Coresapian Inc.</title>
+  <link rel="icon" type="image/png" href="/game/index.icon.png">
+  <link rel="apple-touch-icon" href="/game/index.apple-touch-icon.png">
+  <style>
+    @import '../shared/theme.css';
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--matrix-darker);
+      color: #c9d1d9;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      line-height: 1.7;
+      font-size: 16px;
+    }
+
+    /* Scanline overlay */
+    .scanlines {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0) 0px,
+        rgba(255, 255, 255, 0) 2px,
+        rgba(255, 255, 255, 0.03) 2px,
+        rgba(255, 255, 255, 0.03) 4px
+      );
+    }
+
+    .page-wrapper {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 4rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    .page-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid rgba(0, 255, 65, 0.12);
+    }
+
+    .page-header .runes {
+      font-size: clamp(0.6rem, 1.6vw, 0.85rem);
+      color: #8B6914;
+      letter-spacing: 0.3em;
+      margin-bottom: 1rem;
+      user-select: none;
+    }
+
+    .page-header h1 {
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+      color: var(--cosmic-orange);
+      text-shadow: 0 0 20px rgba(255, 72, 0, 0.6), 0 0 40px rgba(255, 72, 0, 0.3);
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .page-header .subtitle {
+      color: #8B949E;
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+    }
+
+    /* Effective date callout */
+    .effective-date {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      font-size: 0.85rem;
+      color: #8B949E;
+    }
+
+    .effective-date strong {
+      color: var(--matrix-cyan);
+    }
+
+    /* Navigation links */
+    .toc {
+      background: rgba(0, 255, 65, 0.03);
+      border: 1px solid rgba(0, 255, 65, 0.1);
+      border-radius: 10px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .toc h2 {
+      font-size: 0.9rem;
+      color: var(--matrix-green);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .toc ol {
+      list-style: none;
+      counter-reset: toc-counter;
+    }
+
+    .toc ol li {
+      counter-increment: toc-counter;
+      padding: 0.25rem 0;
+    }
+
+    .toc ol li::before {
+      content: counter(toc-counter) ".";
+      color: var(--matrix-cyan);
+      font-weight: 600;
+      margin-right: 0.6rem;
+      font-size: 0.85rem;
+    }
+
+    .toc ol li a {
+      color: #c9d1d9;
+      text-decoration: none;
+      transition: color 0.2s;
+      font-size: 0.92rem;
+    }
+
+    .toc ol li a:hover {
+      color: var(--matrix-green);
+      text-shadow: 0 0 8px var(--glow-green);
+    }
+
+    /* Sections */
+    .section {
+      margin-bottom: 2.5rem;
+    }
+
+    .section h2 {
+      font-size: clamp(1.1rem, 3vw, 1.3rem);
+      color: var(--cosmic-orange);
+      text-shadow: 0 0 12px rgba(255, 72, 0, 0.25);
+      margin-bottom: 0.8rem;
+      padding-bottom: 0.3rem;
+      border-bottom: 1px solid rgba(0, 255, 65, 0.08);
+      letter-spacing: 0.04em;
+    }
+
+    .section h3 {
+      font-size: 1rem;
+      color: #ff6a2a;
+      margin-top: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .section p {
+      margin-bottom: 0.8rem;
+    }
+
+    .section ul {
+      margin: 0.5rem 0 0.8rem 1.5rem;
+    }
+
+    .section ul li {
+      margin-bottom: 0.4rem;
+    }
+
+    .section ul li strong {
+      color: #e6edf3;
+    }
+
+    /* Info boxes */
+    .info-box {
+      background: rgba(0, 212, 255, 0.04);
+      border-left: 3px solid var(--matrix-cyan);
+      padding: 1rem 1.2rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1rem 0;
+      font-size: 0.92rem;
+    }
+
+    /* Contact details */
+    .contact-block {
+      background: rgba(0, 255, 65, 0.03);
+      border: 1px solid rgba(0, 255, 65, 0.1);
+      border-radius: 8px;
+      padding: 1.2rem 1.5rem;
+      margin: 1rem 0;
+    }
+
+    .contact-block p {
+      margin-bottom: 0.3rem;
+    }
+
+    /* Footer */
+    .page-footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(0, 255, 65, 0.1);
+    }
+
+    .page-footer .runes {
+      font-size: clamp(0.55rem, 1.4vw, 0.7rem);
+      color: #8B6914;
+      letter-spacing: 0.3em;
+      margin-bottom: 1rem;
+      user-select: none;
+    }
+
+    .page-footer .meta {
+      font-size: 0.75rem;
+      color: #484f58;
+      letter-spacing: 0.08em;
+    }
+
+    .page-footer a {
+      color: var(--matrix-green);
+      text-decoration: none;
+      transition: text-shadow 0.2s;
+    }
+
+    .page-footer a:hover {
+      text-shadow: 0 0 10px var(--glow-green);
+    }
+
+    /* Back link */
+    .back-link {
+      display: inline-block;
+      color: var(--matrix-green);
+      text-decoration: none;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      padding: 0.5em 1.2em;
+      border: 1px solid rgba(0, 255, 65, 0.2);
+      border-radius: 6px;
+      transition: all 0.2s;
+      margin-top: 1rem;
+    }
+
+    .back-link:hover {
+      text-shadow: 0 0 12px var(--glow-green);
+      border-color: rgba(0, 255, 65, 0.5);
+      box-shadow: 0 0 16px rgba(0, 255, 65, 0.1);
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .page-wrapper {
+        padding: 2rem 1rem 3rem;
+      }
+
+      .toc {
+        padding: 1rem 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <div class="page-wrapper">
+
+    <header class="page-header">
+      <p class="runes" aria-hidden="true">&#5794;&#5855;&#5840;&#5800;&#5795;&#5794;&#5793;&#5810;&#5794;&#5855;&#5807;&#5845;&#5817;&#5848;</p>
+      <h1>Privacy Policy</h1>
+      <p class="subtitle">Coresapian Inc. &mdash; Last updated June 3, 2026</p>
+    </header>
+
+    <p class="effective-date"><strong>Effective Date:</strong> June 3, 2026</p>
+
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#information-we-collect">Information We Collect</a></li>
+        <li><a href="#how-we-use-information">How We Use Your Information</a></li>
+        <li><a href="#third-party-services">Third-Party Services</a></li>
+        <li><a href="#data-storage-security">Data Storage &amp; Security</a></li>
+        <li><a href="#data-retention">Data Retention</a></li>
+        <li><a href="#childrens-privacy">Children&rsquo;s Privacy</a></li>
+        <li><a href="#your-rights">Your Rights &amp; Choices</a></li>
+        <li><a href="#data-deletion">Data Deletion Requests</a></li>
+        <li><a href="#california-privacy">California Privacy Rights</a></li>
+        <li><a href="#international-users">International Users</a></li>
+        <li><a href="#changes">Changes to This Policy</a></li>
+        <li><a href="#contact">Contact Us</a></li>
+      </ol>
+    </nav>
+
+    <!-- 1. Overview -->
+    <section class="section" id="overview">
+      <h2>1. Overview</h2>
+      <p>Coresapian Inc. (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;) respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, disclose, and safeguard your information when you use our mobile applications (including our iOS app), visit our website at <a href="https://coresapian.com" style="color: var(--matrix-cyan); text-decoration: none;">coresapian.com</a>, or interact with our services.</p>
+      <p>This policy applies to all products and services offered by Coresapian Inc. that link to or reference this policy, unless a separate privacy policy is provided for a specific product.</p>
+    </section>
+
+    <!-- 2. Information We Collect -->
+    <section class="section" id="information-we-collect">
+      <h2>2. Information We Collect</h2>
+
+      <h3>2.1 Information You Provide</h3>
+      <ul>
+        <li><strong>Account credentials:</strong> Username and display name when you create an account or connect to our multiplayer services.</li>
+        <li><strong>Chat messages:</strong> Messages you send through our in-app world chat or coreChat features.</li>
+        <li><strong>Support communications:</strong> Information you provide when contacting us for support.</li>
+      </ul>
+
+      <h3>2.2 Information Collected Automatically</h3>
+      <ul>
+        <li><strong>Device information:</strong> Device model, operating system version, and screen resolution for compatibility and optimization.</li>
+        <li><strong>Usage data:</strong> Feature interactions, session duration, and in-app navigation patterns to improve user experience.</li>
+        <li><strong>Network information:</strong> Connection quality metrics for multiplayer session stability and relay optimization.</li>
+      </ul>
+
+      <h3>2.3 Information We Do NOT Collect</h3>
+      <div class="info-box">
+        <p>We do <strong>not</strong> collect, store, or transmit:</p>
+        <ul>
+          <li>Precise geolocation data</li>
+          <li>Contacts or address book information</li>
+          <li>Photos, camera, or microphone data (unless explicitly granted and used within the app for a specific feature)</li>
+          <li>Browsing history outside our services</li>
+          <li>Financial or payment card information</li>
+          <li>Health, fitness, or biometric data</li>
+          <li>Sensitive personal information (race, religion, sexual orientation, political opinions)</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 3. How We Use Information -->
+    <section class="section" id="how-we-use-information">
+      <h2>3. How We Use Your Information</h2>
+      <p>We use the information we collect solely for the following purposes:</p>
+      <ul>
+        <li><strong>Service delivery:</strong> Providing and maintaining our applications, multiplayer servers, and chat functionality.</li>
+        <li><strong>Authentication:</strong> Verifying your identity and API key for access to protected services.</li>
+        <li><strong>Communication:</strong> Delivering chat messages between users and providing in-app notifications.</li>
+        <li><strong>Improvement:</strong> Analyzing aggregate usage patterns to improve performance, stability, and user experience.</li>
+        <li><strong>Security:</strong> Detecting and preventing abuse, unauthorized access, and fraudulent activity.</li>
+        <li><strong>Legal compliance:</strong> Responding to legal obligations or lawful requests from public authorities.</li>
+      </ul>
+      <p>We will never sell your personal data to third parties.</p>
+    </section>
+
+    <!-- 4. Third-Party Services -->
+    <section class="section" id="third-party-services">
+      <h2>4. Third-Party Services</h2>
+      <p>Our services integrate with the following third-party providers. Each provider processes data according to their own privacy policies:</p>
+      <ul>
+        <li><strong>Cloudflare, Inc.</strong> &mdash; Network infrastructure, DNS, tunnel connectivity, and bot protection (Turnstile). Cloudflare may collect and process web traffic data. <a href="https://www.cloudflare.com/privacypolicy/" style="color: var(--matrix-cyan);">Cloudflare Privacy Policy</a></li>
+        <li><strong>Apple Inc.</strong> &mdash; App Store distribution and associated Apple services (e.g., TestFlight). <a href="https://www.apple.com/legal/privacy/" style="color: var(--matrix-cyan);">Apple Privacy Policy</a></li>
+      </ul>
+
+      <h3>4.1 Third-Party Tracking Disclosures (Apple App Store)</h3>
+      <p>Per Apple&rsquo;s App Tracking Transparency requirements:</p>
+      <ul>
+        <li>We do <strong>not</strong> use third-party advertising networks or trackers.</li>
+        <li>We do <strong>not</strong> share device identifiers or user data with data brokers.</li>
+        <li>We do <strong>not</strong> engage in cross-app or cross-website tracking.</li>
+        <li>We do <strong>not</strong> use analytics services that create cross-app user profiles (e.g., Facebook SDK, Google Analytics, Firebase Analytics).</li>
+      </ul>
+
+      <h3>4.2 Data Shared with Third Parties</h3>
+      <p>We share data with third parties only as necessary to deliver our services:</p>
+      <ul>
+        <li><strong>Cloudflare:</strong> Network traffic is routed through Cloudflare for security and performance. Cloudflare may see IP addresses and connection metadata.</li>
+        <li><strong>Apple:</strong> Standard App Store analytics data as provided by Apple&rsquo;s frameworks (crash logs, download metrics).</li>
+      </ul>
+      <p>We do not share personal information with any other third parties.</p>
+    </section>
+
+    <!-- 5. Data Storage & Security -->
+    <section class="section" id="data-storage-security">
+      <h2>5. Data Storage &amp; Security</h2>
+      <p>Your data is stored on infrastructure we operate and control, located in the United States. All connections to our services are encrypted using TLS (HTTPS/WSS). API keys are transmitted over encrypted channels and stored securely.</p>
+      <p>We implement reasonable technical and organizational measures to protect your data, including:</p>
+      <ul>
+        <li>End-to-end TLS encryption for all network communications.</li>
+        <li>API key authentication for protected services.</li>
+        <li>Network-level security via Cloudflare tunnel (no direct inbound ports exposed).</li>
+        <li>Regular security reviews of our infrastructure and code.</li>
+      </ul>
+      <p>While we strive to protect your data, no method of electronic transmission or storage is 100% secure. We cannot guarantee absolute security.</p>
+    </section>
+
+    <!-- 6. Data Retention -->
+    <section class="section" id="data-retention">
+      <h2>6. Data Retention</h2>
+      <ul>
+        <li><strong>Chat messages:</strong> Messages are transmitted in real-time and are not permanently stored on our servers. They exist only in transient memory during active sessions.</li>
+        <li><strong>Account credentials:</strong> Retained for as long as your account is active. Deleted upon account termination request.</li>
+        <li><strong>Usage and network data:</strong> Retained for up to 90 days for debugging and performance analysis, then permanently deleted.</li>
+        <li><strong>Server logs:</strong> Automatically purged on a rolling 30-day basis.</li>
+      </ul>
+    </section>
+
+    <!-- 7. Children's Privacy -->
+    <section class="section" id="childrens-privacy">
+      <h2>7. Children&rsquo;s Privacy</h2>
+      <p>Our services are not directed to children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately at the address below, and we will take steps to delete such information.</p>
+      <p>For users in the European Economic Area, our services are not intended for children under 16 without parental consent.</p>
+    </section>
+
+    <!-- 8. Your Rights -->
+    <section class="section" id="your-rights">
+      <h2>8. Your Rights &amp; Choices</h2>
+      <p>Depending on your jurisdiction, you may have the following rights regarding your personal data:</p>
+      <ul>
+        <li><strong>Access:</strong> Request a copy of the personal data we hold about you.</li>
+        <li><strong>Correction:</strong> Request correction of inaccurate or incomplete personal data.</li>
+        <li><strong>Deletion:</strong> Request deletion of your personal data (see Section 9).</li>
+        <li><strong>Portability:</strong> Request your data in a structured, machine-readable format.</li>
+        <li><strong>Objection:</strong> Object to certain processing activities.</li>
+        <li><strong>Restriction:</strong> Request restriction of processing in certain circumstances.</li>
+      </ul>
+      <p>To exercise any of these rights, contact us at the address in Section 13. We will respond to all verified requests within 30 days.</p>
+    </section>
+
+    <!-- 9. Data Deletion -->
+    <section class="section" id="data-deletion">
+      <h2>9. Data Deletion Requests</h2>
+      <p>You may request deletion of your personal data and account at any time by contacting us at the address below. Upon receiving a verified deletion request, we will:</p>
+      <ul>
+        <li>Delete your account credentials and associated profile information.</li>
+        <li>Purge any personally identifiable usage data associated with your account.</li>
+        <li>Complete the deletion within 30 days of the verified request.</li>
+      </ul>
+      <div class="info-box">
+        <p><strong>iOS App Users:</strong> You may also request account deletion from within the app&rsquo;s Settings screen, or by emailing us directly.</p>
+      </div>
+      <p>Certain anonymized, aggregated data may be retained where it can no longer identify you personally.</p>
+    </section>
+
+    <!-- 10. California Privacy -->
+    <section class="section" id="california-privacy">
+      <h2>10. California Privacy Rights (CCPA/CPRA)</h2>
+      <p>If you are a California resident, you have the following rights under the California Consumer Privacy Act (CCPA) and California Privacy Rights Act (CPRA):</p>
+      <ul>
+        <li><strong>Right to Know:</strong> You have the right to know what personal information we collect, use, and disclose.</li>
+        <li><strong>Right to Delete:</strong> You have the right to request deletion of your personal information.</li>
+        <li><strong>Right to Opt-Out of Sale:</strong> We do not sell personal information. There is nothing to opt out of.</li>
+        <li><strong>Right to Non-Discrimination:</strong> We will not discriminate against you for exercising your privacy rights.</li>
+      </ul>
+      <p>We do not collect &ldquo;Sensitive Personal Information&rdquo; as defined under the CPRA.</p>
+    </section>
+
+    <!-- 11. International Users -->
+    <section class="section" id="international-users">
+      <h2>11. International Users</h2>
+      <p>Our services are operated from the United States. If you access our services from outside the US, please be aware that your data will be transferred to and processed in the United States. By using our services, you consent to this transfer.</p>
+      <p>For users in the European Economic Area (EEA), United Kingdom, or Switzerland:</p>
+      <ul>
+        <li><strong>Legal basis for processing:</strong> We process your data based on contractual necessity (to deliver the service), legitimate interests (security and improvement), or your consent where required.</li>
+        <li><strong>Right to withdraw consent:</strong> Where processing is based on consent, you may withdraw it at any time by contacting us.</li>
+        <li><strong>Right to lodge a complaint:</strong> You have the right to lodge a complaint with your local supervisory authority.</li>
+      </ul>
+    </section>
+
+    <!-- 12. Changes -->
+    <section class="section" id="changes">
+      <h2>12. Changes to This Policy</h2>
+      <p>We may update this privacy policy from time to time. When we make material changes, we will:</p>
+      <ul>
+        <li>Update the &ldquo;Effective Date&rdquo; at the top of this page.</li>
+        <li>Notify you via a prominent notice within the app or on our website.</li>
+        <li>For material changes affecting iOS users, provide in-app notification before the change takes effect.</li>
+      </ul>
+      <p>We encourage you to review this page periodically for the latest information on our privacy practices.</p>
+    </section>
+
+    <!-- 13. Contact -->
+    <section class="section" id="contact">
+      <h2>13. Contact Us</h2>
+      <p>If you have questions, concerns, or requests regarding this privacy policy or our data practices, please contact us:</p>
+
+      <div class="contact-block">
+        <p><strong>Coresapian Inc.</strong></p>
+        <p>Email: <a href="mailto:privacy@coresapian.com" style="color: var(--matrix-cyan); text-decoration: none;">privacy@coresapian.com</a></p>
+        <p>Website: <a href="https://coresapian.com" style="color: var(--matrix-cyan); text-decoration: none;">coresapian.com</a></p>
+      </div>
+
+      <p>We aim to respond to all privacy-related inquiries within 30 days.</p>
+    </section>
+
+    <footer class="page-footer">
+      <p class="runes" aria-hidden="true">&#5833;&#5810;&#5809;&#5796;&#5845;&#5793;&#5794;&#5793;&#5810;&#5796;&#5845;&#5809;&#5799;&#5795;&#5807;&#5793;&#5845;&#5820;&#5817;&#5822;&#5800;&#5807;&#5820;&#5848;&#5800;</p>
+      <p class="meta">
+        coresapian inc. &middot; Since the Dawn of the First Age, 2026<br>
+        <a href="/">coresapian.com</a>
+      </p>
+      <a href="/" class="back-link">&larr; Return to coresapian.com</a>
+    </footer>
+
+  </div>
+
+</body>
+</html>

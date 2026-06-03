@@ -1,0 +1,62 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scenes/rune_puzzle/rune_puzzle.gd" id="1"]
+[ext_resource type="Shader" path="res://shaders/matrix_rain.gdshader" id="2"]
+[ext_resource type="Environment" uid="uid://dsharedenv001" path="res://resources/shared_environment.tres" id="3_env"]
+
+[sub_resource type="ShaderMaterial" id="matrix_rain_mat"]
+shader = ExtResource("2")
+
+[sub_resource type="SphereMesh" id="heart_mesh"]
+radius = 0.5
+height = 1.0
+
+[sub_resource type="StandardMaterial3D" id="heart_mat"]
+albedo_color = Color(0.0, 0.3, 0.1, 1)
+emission_enabled = true
+emission = Color(0.0, 0.5, 0.2, 1)
+emission_energy_multiplier = 1.0
+
+[node name="RunePuzzle" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.866, 0.5, 0, -0.5, 0.866, 0, 8, 8)
+fov = 50.0
+near = 0.1
+far = 100.0
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = ExtResource("3_env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.707, 0.707, 0, -0.707, 0.707, 0, 10, 5)
+light_color = Color(0.0, 0.4, 0.15, 1)
+light_energy = 0.5
+shadow_enabled = true
+
+[node name="OrreryHeart" type="MeshInstance3D" parent="."]
+mesh = SubResource("heart_mesh")
+material_override = SubResource("heart_mat")
+
+[node name="HeartLight" type="OmniLight3D" parent="OrreryHeart"]
+light_color = Color(0.0, 0.5, 0.2, 1)
+light_energy = 1.0
+omni_range = 4.0
+
+[node name="Sockets" type="Node3D" parent="."]
+
+[node name="Glyphs" type="Node3D" parent="."]
+
+[node name="EnergyLines" type="Node3D" parent="."]
+
+[node name="MatrixRainLayer" type="CanvasLayer" parent="."]
+layer = 1
+
+[node name="MatrixRainRect" type="ColorRect" parent="MatrixRainLayer"]
+self_modulate = Color(1, 1, 1, 0.08)
+material = SubResource("matrix_rain_mat")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2

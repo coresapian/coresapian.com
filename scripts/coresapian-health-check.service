@@ -1,0 +1,9 @@
+[Unit]
+Description=CoreSapian Status Page Health Check
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/coresapian/scripts/health-check.py
+StandardOutput=journal
+StandardError=journal

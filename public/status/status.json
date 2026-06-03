@@ -1,0 +1,14 @@
+{
+  "last_checked": "2026-05-18T00:00:00Z",
+  "overall": "operational",
+  "services": {
+    "coresapian": {"name": "Coresapian.com", "desc": "The Hearth-Fire Portal", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "godot_game": {"name": "World Server", "desc": "The Great Hall", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "world_chat": {"name": "World Chat", "desc": "The Whispering Wind Relay", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "corechat": {"name": "coreIRC", "desc": "The Scrying Pool", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "starpark": {"name": "StarPark", "desc": "Starlink Signal Detector", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "plonk": {"name": "Seer", "desc": "The All-Seer Geolocator", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "njorun": {"name": "Njörun", "desc": "The World Weaver", "status": "operational", "uptime_90d": 100.0, "bars": []}
+  },
+  "incidents": []
+}

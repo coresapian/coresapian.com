@@ -1,0 +1,124 @@
+# =============================================================================
+# CoreSapian.com — .gitignore
+# =============================================================================
+
+# --- Secrets & environment (NEVER commit these) ---
+.env
+.env.*
+*.env
+!*.env.example
+
+documents/
+assets/
+.cursor/
+code-review.md/
+exports/
+
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# --- Linux ---
+*~
+.directory
+
+# --- Windows ---
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Node.js (if applicable) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+*.egg
+.Python
+
+# --- Godot 4 ---
+# Ignore Godot's generated cache and import artifacts.
+# Source assets in godot/resources/ are TRACKED (via Git LFS for large files).
+godot/.godot/
+*.ctex
+*.scn
+*.import
+*.translation
+godot/.gdignore
+
+# --- Build artifacts (never commit compiled output) ---
+exports/
+public/game/index.html
+*.pck
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# --- Xcode / iOS ---
+ios/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# --- Docker ---
+docker-compose.override.yml
+.docker/
+
+# --- Logs ---
+*.log
+logs/
+
+# --- OS crash/swap ---
+*.core
+*.swp
+*.swo
+
+# --- Local dev runtime ---
+.dev-pids/
+.dev-logs/
+
+# --- Hermes agent plans (internal) ---
+.hermes/
+
+# --- Misc ---
+.cursor/
+*.backup
+*.bak

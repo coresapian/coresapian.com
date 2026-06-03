@@ -1,0 +1,20 @@
+[Unit]
+Description=GoDaddy DDNS Updater for coresapian.com and related domains
+Documentation=https://developer.godaddy.com/doc/endpoint/domains
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/opt/coresapian/ddns/godaddy.env
+ExecStart=/opt/coresapian/scripts/ddns_godaddy.sh
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/coresapian/ddns
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

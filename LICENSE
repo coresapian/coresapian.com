@@ -1,0 +1,227 @@
+> # Proprietary Software License Agreement
+
+> ## PREAMBLE
+
+This Software License Agreement ("Agreement") governs the use, reproduction,
+and distribution of the software and associated documentation files (collectively,
+the "Software") provided by Coresapian Inc. ("Licensor", "we", or "us"). By
+accessing, installing, or using the Software, you ("Licensee", "you") agree to
+be bound by the terms and conditions set forth in this Agreement. If you do not
+agree with any part of this Agreement, you must cease all use of the Software
+immediately and destroy all copies in your possession.
+
+---
+
+> 1. DEFINITIONS
+
+---
+
+  "Software"       means the original software program(s), source code, object
+                   code, associated documentation, updates, upgrades, patches,
+                   and any copies thereof provided by the Licensor.
+
+  "Derivative Work" means any work based upon the Software or any portion
+                   thereof, including but not limited to modifications,
+                   enhancements, adaptations, translations, or any work that
+                   incorporates the Software or a substantial portion thereof.
+
+  "Confidential    means all non-public information related to the Software,
+   Information"    including but not limited to source code, algorithms, design
+                   documents, trade secrets, and business or technical
+                   information disclosed by the Licensor.
+
+---
+
+> 2. GRANT OF LICENSE
+
+---
+
+2.1  Subject to the terms and conditions of this Agreement and your full
+     compliance therewith, the Licensor grants you a limited, non-exclusive,
+     non-transferable, non-sublicensable, revocable license to use the
+     Software solely for its intended purpose as described in the accompanying
+     documentation.
+
+2.2  This license does not include the right to:
+     (a) Modify, alter, or create Derivative Works of the Software;
+     (b) Reverse engineer, decompile, disassemble, or otherwise attempt to
+         discover the source code or underlying structure of the Software;
+     (c) Rent, lease, lend, or otherwise transfer the Software to any
+         third party;
+     (d) Use the Software for any purpose that is unlawful or prohibited by
+         this Agreement;
+     (e) Remove, alter, or obscure any proprietary notices, labels, or
+         markings on the Software.
+
+2.3  Any rights not expressly granted herein are reserved by the Licensor.
+
+---
+
+> 3. INTELLECTUAL PROPERTY RIGHTS
+
+---
+
+3.1  The Software and all intellectual property rights therein, including but
+     not limited to copyrights, trademarks, trade secrets, and patents, are
+     and shall remain the sole and exclusive property of the Licensor.
+
+3.2  No title to or ownership of the Software is transferred to you under
+     this Agreement. You acknowledge and agree that the Software is licensed,
+     not sold, to you.
+
+3.3  You shall not use any trademark, service mark, trade name, or logo of
+     the Licensor without the prior written consent of the Licensor.
+
+---
+
+> 4. CONFIDENTIALITY
+
+---
+
+4.1  You acknowledge that the Software contains Confidential Information of
+     the Licensor. You shall hold all Confidential Information in strict
+     confidence and shall not disclose, publish, or otherwise disseminate it
+     to any third party without the prior written consent of the Licensor.
+
+4.2  You shall use the same degree of care to protect the Confidential
+     Information as you use to protect your own confidential information of
+     a like nature, but in no event less than reasonable care.
+
+---
+
+> 5. RESTRICTIONS ON DISTRIBUTION
+
+---
+
+5.1  You may not distribute, publish, sublicense, or otherwise make the
+     Software available to any third party, in whole or in part, whether
+     for commercial or non-commercial purposes, without the express prior
+     written permission of the Licensor.
+
+5.2  Any unauthorized distribution of the Software shall constitute a
+     material breach of this Agreement and may result in immediate
+     termination of your license and legal action.
+
+---
+
+> 6. TERM AND TERMINATION
+
+---
+
+6.1  This Agreement is effective upon your acceptance and shall remain in
+     effect until terminated in accordance with this Section.
+
+6.2  The Licensor may terminate this Agreement at any time, with or without
+     cause, upon written notice to you. Upon termination:
+     (a) All rights granted to you under this Agreement shall immediately
+         cease;
+     (b) You must cease all use of the Software;
+     (c) You must destroy or return to the Licensor all copies of the
+         Software in your possession or control.
+
+6.3  The provisions of Sections 3, 4, 7, 8, and 9 shall survive any
+     termination or expiration of this Agreement.
+
+---
+
+> 7. DISCLAIMER OF WARRANTIES
+
+---
+
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTY OF
+ANY KIND, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, TITLE, AND NON-INFRINGEMENT. THE LICENSOR MAKES NO REPRESENTATION
+OR WARRANTY THAT THE SOFTWARE WILL BE ERROR-FREE, UNINTERRUPTED, SECURE,
+OR FREE FROM VIRUSES OR OTHER HARMFUL COMPONENTS.
+
+NO ORAL OR WRITTEN INFORMATION OR ADVICE GIVEN BY THE LICENSOR, ITS
+EMPLOYEES, DISTRIBUTORS, DEALERS, OR AGENTS SHALL CREATE A WARRANTY OR IN
+ANY WAY INCREASE THE SCOPE OF THIS WARRANTY. YOU ASSUME ALL RISKS ASSOCIATED
+WITH THE USE OF THE SOFTWARE.
+
+---
+
+> 8. LIMITATION OF LIABILITY
+
+---
+
+IN NO EVENT SHALL THE LICENSOR, ITS OFFICERS, DIRECTORS, EMPLOYEES, AGENTS,
+SUCCESSORS, OR ASSIGNS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES WHATSOEVER (INCLUDING,
+BUT NOT LIMITED TO, DAMAGES FOR LOSS OF PROFITS, GOODWILL, USE, DATA, OR
+OTHER INTANGIBLE LOSSES; BUSINESS INTERRUPTION; OR COMPUTER FAILURE OR
+MALFUNCTION), REGARDLESS OF THE LEGAL THEORY UNDER WHICH SUCH DAMAGES ARE
+SOUGHT, WHETHER BASED ON WARRANTY, CONTRACT, TORT (INCLUDING NEGLIGENCE),
+STRICT LIABILITY, OR OTHERWISE, EVEN IF THE LICENSOR HAS BEEN ADVISED OF
+THE POSSIBILITY OF SUCH DAMAGES.
+
+IN ANY JURISDICTION THAT DOES NOT ALLOW THE EXCLUSION OR LIMITATION OF
+LIABILITY FOR CONSEQUENTIAL OR INCIDENTAL DAMAGES, THE TOTAL LIABILITY OF
+THE LICENSOR TO YOU FOR ALL CLAIMS ARISING FROM OR RELATED TO THIS AGREEMENT
+OR THE SOFTWARE SHALL NOT EXCEED THE AMOUNT ACTUALLY PAID BY YOU FOR THE
+SOFTWARE, IF ANY.
+
+---
+
+> 9. INDEMNIFICATION
+
+---
+
+You agree to indemnify, defend, and hold harmless the Licensor and its
+officers, directors, employees, agents, successors, and assigns from and
+against any and all claims, demands, actions, suits, proceedings, losses,
+damages, costs, and expenses (including reasonable attorneys' fees) arising
+out of or in connection with your use of the Software or any breach of this
+Agreement.
+
+---
+
+> 10. GOVERNING LAW AND DISPUTE RESOLUTION
+
+---
+
+10.1 This Agreement shall be governed by and construed in accordance with
+      the laws of the jurisdiction in which the Licensor is headquartered,
+      without regard to its conflict-of-law principles.
+
+10.2 Any dispute arising out of or in connection with this Agreement shall
+      be submitted to the exclusive jurisdiction of the competent courts
+      located in the Licensor's jurisdiction.
+
+---
+
+> 11. GENERAL PROVISIONS
+
+---
+
+11.1 ENTIRE AGREEMENT: This Agreement constitutes the entire agreement
+      between you and the Licensor with respect to the Software and
+      supersedes all prior or contemporaneous understandings, agreements,
+      representations, and warranties, whether written or oral.
+
+11.2 SEVERABILITY: If any provision of this Agreement is found to be
+      unenforceable or invalid, that provision shall be limited or eliminated
+      to the minimum extent necessary so that this Agreement shall otherwise
+      remain in full force and effect.
+
+11.3 WAIVER: The failure of the Licensor to enforce any right or provision
+      of this Agreement shall not constitute a waiver of such right or
+      provision. Any waiver of any provision of this Agreement will be
+      effective only if in writing and signed by the Licensor.
+
+11.4 AMENDMENTS: The Licensor reserves the right to amend or modify this
+      Agreement at any time. Continued use of the Software after such
+      amendments constitutes your acceptance of the revised terms.
+
+---
+
+> For questions or inquiries regarding this Agreement, please contact:
+
+- <info@coresapian.com>
+
+- <https://www.coresapian.com>
+
+---
+
+> Copyright (c) 2026 | coresapian inc. | All rights reserved.

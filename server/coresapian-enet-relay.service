@@ -1,0 +1,19 @@
+[Unit]
+Description=CoreSapian ENet-WebSocket Relay
+After=network.target coresapian-game.service
+Wants=coresapian-game.service
+
+[Service]
+Type=simple
+ExecStart=/opt/coresapian/.venv/bin/python3 /opt/coresapian/server/enet_ws_relay.py
+WorkingDirectory=/opt/coresapian/server
+Environment=ENET_SERVER_HOST=127.0.0.1
+Environment=ENET_SERVER_PORT=7001
+Environment="WS_LISTEN_PORT=7000"
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

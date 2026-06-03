@@ -1,0 +1,10 @@
+# Godot 4 generated files
+.godot/
+
+# Export artifacts
+*.pck
+*.zip
+
+# OS files
+.DS_Store
+Thumbs.db

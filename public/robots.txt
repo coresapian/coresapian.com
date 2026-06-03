@@ -1,0 +1,51 @@
+# robots.txt for coresapian.com
+# Last updated: May 11th, 2026
+
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 100
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 100
+
+User-agent: Slurp
+Allow: /
+Crawl-delay: 100
+
+User-agent: Facebot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: Dotbot
+Disallow: /
+
+User-agent: *
+Allow: /
+Disallow: /admin-backup-2024/
+Disallow: /db-dump/
+Disallow: /secure-login/
+Disallow: /.env.backup
+Disallow: /wp-admin/
+Disallow: /users-export.sql
+Disallow: /staging-admin/
+Disallow: /config-backup/
+Disallow: /phpmyadmin/
+Disallow: /super-admin-panel/
+
+# Sitemap
+Sitemap: https://coresapian.com/sitemap.xml

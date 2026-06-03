@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <title>coresapian inc.</title>
+    <link rel="icon" type="image/png" href="/game/index.icon.png">
+    <link rel="apple-touch-icon" href="/game/index.apple-touch-icon.png">
+    <link rel="stylesheet" href="/game/game-shell.css?v=20260309-1">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="shell__stage">
+        <div class="game-frame">
+          <audio
+            id="ambient-audio"
+            preload="metadata"
+            loop
+            playsinline
+            src="/orchastra-cinematic-001.mp3"
+          ></audio>
+
+          <canvas id="canvas">
+            browser not supported
+          </canvas>
+
+          <noscript>
+            browser not supported
+          </noscript>
+
+          <div id="status" data-mode="progress" role="status" aria-live="polite">
+            <div class="status-shell">
+              <div id="status-model" class="status-shell__model" aria-hidden="true">
+                <div class="status-shell__fallback-grid"></div>
+                <div class="status-shell__fallback-ring status-shell__fallback-ring--outer"></div>
+                <div class="status-shell__fallback-ring status-shell__fallback-ring--inner"></div>
+                <div class="status-shell__fallback-glow"></div>
+                <div class="status-shell__fallback-core"></div>
+              </div>
+
+              <div class="status-shell__meter" aria-hidden="true">
+                <div id="status-meter-fill" class="status-shell__meter-fill"></div>
+              </div>
+
+              <progress id="status-progress" value="0" max="100">0%</progress>
+              <div id="status-notice"></div>
+            </div>
+          </div>
+
+          <div id="immersive-toolbar" class="shell__toolbar" aria-label="Scene controls">
+            <div class="shell__toolbar-pill">
+              <button id="sound-toggle" class="shell__button" type="button" aria-pressed="true">sfx</button>
+              <button id="fullscreen-toggle" class="shell__button" type="button">fullscreen</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="rotate-gate" class="rotate-gate" hidden>
+      <div class="rotate-gate__card">
+        <p class="eyebrow">Landscape Only</p>
+        <h2>Turn your phone sideways</h2>
+        <p>then tap the button.</p>
+        <button id="rotate-launch" class="shell__button" type="button">enter the core</button>
+      </div>
+    </div>
+
+    <script src="/game/index.js"></script>
+    <script>
+      window.__GODOT_CONFIG = {
+        "args": [],
+        "canvasResizePolicy": 2,
+        "emscriptenPoolSize": 8,
+        "ensureCrossOriginIsolationHeaders": true,
+        "executable": "/game/index",
+        "experimentalVK": false,
+        "fileSizes": {
+          "/game/index.pck": 57019532,
+          "/game/index.wasm": 37686550
+        },
+        "focusCanvas": true,
+        "gdextensionLibs": [],
+        "godotPoolSize": 4,
+        "mainPack": "/game/index.pck"
+      };
+    </script>
+    <script type="module" src="/game/game-shell.js?v=20260309-1"></script>
+    <div class="cf-turnstile" data-sitekey="0x4AAAAAADSl8Nc0Nac221Ea" data-theme="dark" data-size="invisible"></div>
+  </body>
+</html>

@@ -48,8 +48,10 @@ var _sync_pitch: float = 0.0
 
 
 func _ready() -> void:
-	# Decide if this instance belongs to the local player.
-	set_multiplayer_authority(multiplayer.get_unique_id())
+	# Authority is determined by the node name (set by MultiplayerSpawner to the peer ID).
+	# This way each peer grants authority to the correct player instance.
+	var peer_id := int(name)
+	set_multiplayer_authority(peer_id)
 
 	var is_local := is_multiplayer_authority()
 

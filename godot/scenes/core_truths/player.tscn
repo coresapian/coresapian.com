@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://br8mplayer001"]
 
 [ext_resource type="Script" uid="uid://bqovv1awxmgft" path="res://scenes/core_truths/player_controller.gd" id="ctrl"]
-[ext_resource type="PackedScene" path="res://scenes/ui/chat_widget.tscn" id="chat"]
 [ext_resource type="PackedScene" path="res://scenes/ui/settings_menu.tscn" id="settings_scene"]
 
 [sub_resource type="CapsuleShape3D" id="capsule"]
@@ -20,6 +19,7 @@ disable_receive_shadows = true
 [node name="Player" type="CharacterBody3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6080936, 6.969077)
 script = ExtResource("ctrl")
+groups = ["player"]
 
 [node name="PlayerCollisionShape" type="CollisionShape3D" parent="."]
 shape = SubResource("capsule")
@@ -168,14 +168,3 @@ offset_bottom = -160.0
 theme_override_colors/font_color = Color(0.9, 1, 0.98, 1)
 theme_override_font_sizes/font_size = 24
 text = "Interact"
-
-[node name="ChatWidget" parent="HUD" instance=ExtResource("chat")]
-anchors_preset = -1
-anchor_left = 0.0
-anchor_top = 0.6
-anchor_right = 0.0
-anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = 0.0
-offset_right = 370.0
-offset_bottom = -16.0

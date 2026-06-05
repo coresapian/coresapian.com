@@ -53,33 +53,52 @@ function buildCollisionBoxes() {
 }
 
 /**
- * Find floor Y below a point.
- * Casts downward ray, examines ALL hits, returns lowest Y.
+ * Find floor Y below a point using multi-ray spread + multi-hit scanning.
+ *
+ * The skill (threejs-web-experiences) is explicit: multi-hit scanning alone
+ * is insufficient when suspended geometry extends across all offset rays
+ * (e.g. a wide skeleton pelvis). We cast rays at the center AND at offsets
+ * in a small radius, then pick the lowest hit point across ALL rays and
+ * ALL intersections per ray. This is the durable fix for "player spawns on
+ * the dinosaur skeleton."
  */
-function findFloor(ox, oy, oz, maxDrop) {
-  _rayOrigin.set(ox, oy, oz);
-  _downRaycaster.set(_rayOrigin, _downDir);
-  _downRaycaster.far = maxDrop;
+function findFloor(ox, oy, oz, maxDrop, offsets) {
+  // Default offsets: center only (preserves backward compatibility for
+  // runtime ground detection that uses a tighter spread).
+  const probeOffsets = offsets || [[0, 0]];
+  let bestY = null;
 
-  const hits = _downRaycaster.intersectObjects(S.collisionMeshes, false);
-  if (!hits.length) return null;
+  for (const [dx, dz] of probeOffsets) {
+    _rayOrigin.set(ox + dx, oy, oz + dz);
+    _downRaycaster.set(_rayOrigin, _downDir);
+    _downRaycaster.far = maxDrop;
 
-  let low = hits[0].point.y;
-  for (let i = 1; i < hits.length; i++) {
-    if (hits[i].point.y < low) low = hits[i].point.y;
+    const hits = _downRaycaster.intersectObjects(S.collisionMeshes, false);
+    if (!hits.length) continue;
+
+    // Scan ALL hits per ray — the closest is often the top of a suspended
+    // object (skeleton, chandelier), not the floor.
+    for (let i = 0; i < hits.length; i++) {
+      const y = hits[i].point.y;
+      if (bestY === null || y < bestY) bestY = y;
+    }
   }
-  return low;
+  return bestY;
 }
 
 /**
  * Snap player to ground on spawn.
+ * Uses a 5-ray spread (center + 4 cardinals at 0.8m) so a single piece of
+ * suspended geometry (skeleton, chandelier) doesn't snap the player on top
+ * of it. See findFloor() docs.
  */
 function snapToGround() {
   const pos = S.cameraYaw.position;
   const eyeH = S.settings.eyeHeight;
   if (!S.collisionMeshes.length) return;
 
-  const floorY = findFloor(pos.x, 50, pos.z, 100);
+  const offsets = [[0, 0], [0.8, 0], [-0.8, 0], [0, 0.8], [0, -0.8]];
+  const floorY = findFloor(pos.x, 50, pos.z, 100, offsets);
   if (floorY !== null) {
     pos.y = floorY + eyeH;
     S.onGround = true;
@@ -201,8 +220,13 @@ function updatePhysics(delta) {
   }
 
   // -- Ground detection --
+  // Runtime uses a tight 3-ray spread: center + two small offsets. This is
+  // cheaper than the spawn-time 5-ray spread but still prevents the player
+  // from snapping onto a narrow suspended object (e.g. a skeleton rib)
+  // that only the center ray hits.
   if (S.collisionMeshes.length) {
-    const fy = findFloor(nx, ny + 0.1, nz, eh + 2.5);
+    const rtOffsets = [[0, 0], [0.3, 0], [-0.3, 0]];
+    const fy = findFloor(nx, ny + 0.1, nz, eh + 2.5, rtOffsets);
     if (fy !== null) {
       S.floorY = fy;
       if (ny - eh <= fy + 0.05) {

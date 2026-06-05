@@ -13,12 +13,13 @@ func open_browser(url: String, title: String = "Browser") -> void:
 		push_warning("Browser overlay: only available on web export (url=%s)" % url)
 		return
 
-	# Escape single quotes in strings for JS embedding
-	var safe_url := url.replace("'", "\\'")
-	var safe_title := title.replace("'", "\\'")
+	# Use JSON.stringify to safely escape strings for JS embedding.
+	# This handles all special characters including quotes, backslashes, and unicode.
+	var safe_url := JSON.stringify(url)
+	var safe_title := JSON.stringify(title)
 
 	JavaScriptBridge.eval(
-		"window.__coresapianShowBrowser('%s', '%s')" % [safe_url, safe_title]
+		"window.__coresapianShowBrowser(%s, %s)" % [safe_url, safe_title]
 	)
 
 

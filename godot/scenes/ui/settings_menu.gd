@@ -84,12 +84,6 @@ func _pause_player_input(pause: bool) -> void:
 
 
 func _any_ui_open() -> bool:
-	# Check if chat input is focused (chat is in "typing" mode)
-	var player := _get_local_player()
-	if player:
-		var chat: Control = player.get_node_or_null("HUD/ChatWidget")
-		if chat and chat.has_method("is_chat_active") and chat.is_chat_active():
-			return true
 	# Check browser overlay
 	if OS.has_feature("web"):
 		var js_result = JavaScriptBridge.eval("window.__coresapianIsBrowserOpen && window.__coresapianIsBrowserOpen()")

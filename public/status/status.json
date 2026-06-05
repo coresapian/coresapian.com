@@ -1,14 +1,13 @@
 {
-  "last_checked": "2026-05-18T00:00:00Z",
+  "last_checked": "2026-06-05T00:00:00Z",
   "overall": "operational",
   "services": {
-    "coresapian": {"name": "Coresapian.com", "desc": "The Hearth-Fire Portal", "status": "operational", "uptime_90d": 100.0, "bars": []},
-    "godot_game": {"name": "World Server", "desc": "The Great Hall", "status": "operational", "uptime_90d": 100.0, "bars": []},
-    "world_chat": {"name": "World Chat", "desc": "The Whispering Wind Relay", "status": "operational", "uptime_90d": 100.0, "bars": []},
-    "corechat": {"name": "coreIRC", "desc": "The Scrying Pool", "status": "operational", "uptime_90d": 100.0, "bars": []},
-    "starpark": {"name": "StarPark", "desc": "Starlink Signal Detector", "status": "operational", "uptime_90d": 100.0, "bars": []},
-    "plonk": {"name": "Seer", "desc": "The All-Seer Geolocator", "status": "operational", "uptime_90d": 100.0, "bars": []},
-    "njorun": {"name": "Njörun", "desc": "The World Weaver", "status": "operational", "uptime_90d": 100.0, "bars": []}
+    "coresapian": {"name": "Coresapian.com", "desc": "The Hearth-Fire — main website and game portal", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "godot_game": {"name": "Godot Game Server", "desc": "The Great Hall — multiplayer temple server", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "anonymous_chat": {"name": "Anonymous Chat", "desc": "The Whispering Wind — global chat relay", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "starpark": {"name": "StarPark", "desc": "The Star-Forge — AI image generation", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "plonk": {"name": "PLONK", "desc": "The All-Seer — visual geolocation", "status": "operational", "uptime_90d": 100.0, "bars": []},
+    "njorun": {"name": "Njörun", "desc": "The World-Weaver — 3D scene generation", "status": "operational", "uptime_90d": 100.0, "bars": []}
   },
   "incidents": []
 }

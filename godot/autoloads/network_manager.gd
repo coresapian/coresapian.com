@@ -16,12 +16,11 @@ signal server_disconnected
 signal player_connected(peer_id: int)
 signal player_disconnected(peer_id: int)
 
-## Emitted when the lobby scene should load the game world.
-signal lobby_ready
+## Emitted when the dedicated server has started and the world should initialize.
+signal world_ready
 
 const DEFAULT_PORT := 7000
 const DEFAULT_SERVER_IP := "127.0.0.1"
-const MAX_CONNECTIONS := 16
 
 var player_name: String = "Player"
 
@@ -30,28 +29,14 @@ var is_dedicated_server: bool = false
 
 
 func _ready() -> void:
+	# Detect dedicated server mode at startup via Godot's standard feature tag.
+	# This is set when launching with --dedicated-server or in a dedicated server export.
+	is_dedicated_server = OS.has_feature("dedicated_server")
+
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
-
-
-## Start a listen server (host plays + others can join).
-## Uses WebSocket transport so browser clients can connect.
-func host_game(port: int = DEFAULT_PORT, name: String = "Host") -> void:
-	player_name = name
-	var ws_peer := WebSocketMultiplayerPeer.new()
-	var err := ws_peer.create_server(port, "0.0.0.0")
-	if err != OK:
-		push_error("Failed to host: %s" % err)
-		connection_failed.emit()
-		return
-
-	multiplayer.multiplayer_peer = ws_peer
-	is_dedicated_server = false
-	print("WebSocket server started on port %d" % port)
-	connection_succeeded.emit()
-	player_connected.emit(1)  # The host is always peer 1
 
 
 ## Connect as a client to a remote server.
@@ -90,7 +75,7 @@ func start_dedicated_server(port: int = DEFAULT_PORT) -> void:
 	print("Dedicated WebSocket server started on port %d" % port)
 
 	# Tell the scene manager to load the world immediately.
-	lobby_ready.emit()
+	world_ready.emit()
 
 
 ## Disconnect from the server / stop hosting.

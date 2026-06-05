@@ -3,10 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Coresapian Status &mdash; The Norns' Loom</title>
-  <meta name="description" content="Real-time status and uptime for Coresapian inc. services">
+  <title>CoreSapian Status — The Norns' Loom</title>
+  <meta name="description" content="Real-time status and uptime for CoreSapian Inc. services.">
+  <meta name="theme-color" content="#FF8C00">
   <meta http-equiv="refresh" content="30">
-  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <link rel="canonical" href="https://coresapian.com/status/">
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Courier New',Courier,monospace;background:#0a0a0a;color:#e0e0e0;min-height:100vh;overflow-x:hidden}
@@ -106,7 +113,7 @@
   <script>
   (function(){
     var APP = document.getElementById('app');
-    var serviceOrder = ['coresapian','godot_game','world_chat','corechat','starpark','plonk','njorun'];
+    var serviceOrder = ['coresapian','godot_game','anonymous_chat','starpark','plonk','njorun'];
     var statusLabels = {operational:'Operational',degraded:'Degraded',down:'Down',major_outage:'Major Outage'};
     var overallLabels = {operational:'All Systems Operational',degraded:'Some Systems Degraded',major_outage:'Major Service Disruption'};
     var statusClasses = {operational:'status-operational',degraded:'status-degraded',down:'status-down'};
@@ -247,6 +254,5 @@
     fetchStatus();
   })();
   </script>
-  <div class="cf-turnstile" data-sitekey="0x4AAAAAADSl8Nc0Nac221Ea" data-theme="dark" data-size="invisible"></div>
 </body>
 </html>

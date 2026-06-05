@@ -107,10 +107,10 @@ function spawnPickableItems() {
     light.position.set(0, 0, 0);
     mesh.add(light);
 
-    // Register for collision
-    mesh.traverse((child) => {
-      if (child.isMesh) S.collisionMeshes.push(child);
-    });
+    // NOTE: Pickable items are NOT pushed into S.collisionMeshes.
+    // They are floating collectibles — wall collision against them would trap
+    // the player in doorways or block corridors. Pickup is via center-screen
+    // raycast in interaction.js, which traverses each item's meshes directly.
 
     S.scene.add(mesh);
 
@@ -121,6 +121,12 @@ function spawnPickableItems() {
       icon: itemConfig.icon,
       color: itemConfig.color,
       mesh: mesh,
+      meshes: (() => {
+        // Cache all child meshes once for fast raycasting in interaction.js
+        const arr = [];
+        mesh.traverse((child) => { if (child.isMesh) arr.push(child); });
+        return arr;
+      })(),
       config: itemConfig,
       baseY: itemConfig.position[1],
       collected: false

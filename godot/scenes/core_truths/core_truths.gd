@@ -2,6 +2,8 @@ extends Node3D
 
 signal experience_completed
 
+const PLAYER_SCENE: PackedScene = preload("res://scenes/core_truths/player.tscn")
+
 const TRUTHS: Array[Dictionary] = [
 	{
 		"title": "coRE truths",
@@ -71,6 +73,7 @@ func _ready() -> void:
 			env.environment.volumetric_fog_enabled = false
 	_start_ambient_audio()
 	_create_truth_tablets()
+	_setup_multiplayer_spawning()
 
 
 func _process(delta: float) -> void:
@@ -262,6 +265,46 @@ func _apply_tablet_alpha(alpha: float) -> void:
 		title.modulate.a = alpha
 		body.modulate.a = alpha
 		light.light_energy = (2.0 + sin(_pulse_time * 4.0 + phase) * 0.35) * alpha
+
+
+## Set up multiplayer player spawning.
+## The server (peer 1) is authoritative for spawning all players.
+## In single-player / no-connection mode, we spawn locally immediately.
+func _setup_multiplayer_spawning() -> void:
+	var spawner: MultiplayerSpawner = $PlayerSpawner
+	if not spawner:
+		push_error("PlayerSpawner not found in CoreTruths scene!")
+		return
+
+	# Listen for new peers so the server can spawn their players.
+	multiplayer.peer_connected.connect(_on_peer_connected)
+
+	# Spawn our own player.
+	# - No peer (editor / standalone): is_server() is true, spawn immediately.
+	# - We ARE the server: spawn immediately.
+	# - We're a client: the server will spawn for us via MultiplayerSpawner replication.
+	if multiplayer.is_server():
+		_spawn_player(multiplayer.get_unique_id())
+
+
+func _on_peer_connected(peer_id: int) -> void:
+	# Only the server spawns players.
+	if not multiplayer.is_server():
+		return
+	_spawn_player(peer_id)
+
+
+func _spawn_player(peer_id: int) -> void:
+	var spawner: MultiplayerSpawner = $PlayerSpawner
+	if not spawner:
+		return
+	# Avoid duplicates.
+	if spawner.has_node(str(peer_id)):
+		return
+	var player := PLAYER_SCENE.instantiate()
+	player.name = str(peer_id)
+	spawner.add_child(player)
+	print("[CoreTruths] Spawned player for peer %d" % peer_id)
 
 
 ## Load and play the ambient cinematic audio track if available.

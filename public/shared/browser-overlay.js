@@ -1,5 +1,5 @@
 /**
- * Browser Overlay — creates closable iframe overlays on top of the game canvas.
+ * Browser Overlay v2.0 — creates closable iframe overlays on top of the game canvas.
  * Called by Godot via JavaScriptBridge when player interacts with temple objects.
  *
  * Usage from Godot:
@@ -35,20 +35,21 @@
       </div>
     `;
 
-    // Inject styles
+    // Inject styles — Orange Phosphor CRT theme
     const style = document.createElement('style');
     style.textContent = `
       #cs-browser-overlay {
         position: fixed;
         inset: 0;
         z-index: 9999;
-        font-family: "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+        font-family: "VT323", "Share Tech Mono", "Courier New", monospace;
       }
       .cs-browser-backdrop {
         position: absolute;
         inset: 0;
-        background: rgba(3, 7, 10, 0.88);
+        background: rgba(5, 2, 0, 0.92);
         backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
         animation: cs-fade-in 0.2s ease;
       }
       .cs-browser-window {
@@ -56,11 +57,12 @@
         inset: 2rem;
         display: flex;
         flex-direction: column;
-        background: #0d1117;
-        border: 1px solid rgba(99, 247, 209, 0.28);
-        border-radius: 1rem;
-        box-shadow: 0 0 3rem rgba(0, 0, 0, 0.5),
-                    0 0 1rem rgba(99, 247, 209, 0.12);
+        background: #0a0500;
+        border: 1px solid #FF8C00;
+        border-radius: 4px;
+        box-shadow:
+          0 0 3rem rgba(0, 0, 0, 0.5),
+          0 0 1rem rgba(255, 140, 0, 0.15);
         overflow: hidden;
         animation: cs-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       }
@@ -68,35 +70,38 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0.75rem 1.25rem;
-        background: rgba(8, 16, 22, 0.95);
-        border-bottom: 1px solid rgba(99, 247, 209, 0.18);
+        padding: 0.6rem 1rem;
+        background: rgba(10, 5, 0, 0.95);
+        border-bottom: 1px solid rgba(255, 140, 0, 0.3);
         flex-shrink: 0;
       }
       .cs-browser-title {
-        color: #63f7d1;
-        font-weight: 600;
-        font-size: 0.95rem;
-        letter-spacing: 0.04em;
+        color: #FF8C00;
+        font-weight: 400;
+        font-size: 1rem;
+        letter-spacing: 0.06em;
+        text-shadow: 0 0 4px rgba(255, 140, 0, 0.4);
       }
       .cs-browser-close {
         background: none;
-        border: 1px solid rgba(99, 247, 209, 0.3);
-        border-radius: 0.5rem;
-        color: #63f7d1;
-        font-size: 1.4rem;
+        border: 1px solid rgba(255, 140, 0, 0.4);
+        border-radius: 2px;
+        color: #FF8C00;
+        font-family: inherit;
+        font-size: 1.3rem;
         line-height: 1;
-        width: 2.2rem;
-        height: 2.2rem;
+        width: 2rem;
+        height: 2rem;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background 0.15s ease, color 0.15s ease;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 0.15s ease;
       }
-      .cs-browser-close:hover {
-        background: rgba(99, 247, 209, 0.15);
-        color: #eefcf8;
+      .cs-browser-close:active {
+        background: rgba(255, 140, 0, 0.15);
       }
       .cs-browser-iframe {
         flex: 1;
@@ -109,13 +114,13 @@
         to { opacity: 1; }
       }
       @keyframes cs-slide-up {
-        from { opacity: 0; transform: translateY(2rem) scale(0.98); }
+        from { opacity: 0; transform: translateY(1.5rem) scale(0.98); }
         to { opacity: 1; transform: translateY(0) scale(1); }
       }
       @media (max-width: 800px) {
         .cs-browser-window {
-          inset: 0.75rem;
-          border-radius: 0.75rem;
+          inset: 0.5rem;
+          border-radius: 4px;
         }
       }
     `;
@@ -129,6 +134,7 @@
 
     backdrop.addEventListener('click', closeOverlay);
     closeBtn.addEventListener('click', closeOverlay);
+    closeBtn.addEventListener('touchend', (e) => { e.preventDefault(); closeOverlay(); });
 
     document.body.appendChild(overlay);
     isOpen = true;

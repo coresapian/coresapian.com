@@ -1,5 +1,5 @@
 # robots.txt for coresapian.com
-# Last updated: May 11th, 2026
+# Last updated: June 5, 2026
 
 User-agent: Googlebot
 Allow: /
@@ -34,18 +34,16 @@ Disallow: /
 User-agent: Dotbot
 Disallow: /
 
+# NOTE: Do NOT advertise sensitive paths here.
+# Disallow does not prevent crawling — it tells attackers where to look.
+# Sensitive paths should return 404/410 at the nginx layer instead.
+
 User-agent: *
 Allow: /
-Disallow: /admin-backup-2024/
-Disallow: /db-dump/
-Disallow: /secure-login/
-Disallow: /.env.backup
-Disallow: /wp-admin/
-Disallow: /users-export.sql
-Disallow: /staging-admin/
-Disallow: /config-backup/
-Disallow: /phpmyadmin/
-Disallow: /super-admin-panel/
+Disallow: /game/
+Disallow: /status/
+Disallow: /explorer/
+Disallow: /rune_puzzle/
+Disallow: /core_truths_book/
 
-# Sitemap
 Sitemap: https://coresapian.com/sitemap.xml

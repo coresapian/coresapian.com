@@ -4,11 +4,22 @@
 import S from './state.js';
 
 function lock() {
+  // Refuse to lock while the orientation prompt is visible. The orientation
+  // prompt has z-index 600 (above the blocker at 100), so taps on the blocker
+  // shouldn't reach here — but be defensive in case of touchstart/click race
+  // or programmatic calls.
+  const orientEl = document.getElementById('orientation-prompt');
+  if (orientEl && orientEl.style.display === 'flex') return;
+
   if (S.isTouchDevice) {
     S.controls.isLocked = true;
     S.controls._lockListeners.forEach(fn => fn());
   } else {
-    document.body.requestPointerLock();
+    try {
+      document.body.requestPointerLock();
+    } catch (e) {
+      console.warn('requestPointerLock failed:', e);
+    }
   }
 }
 
@@ -30,12 +41,17 @@ function initPointerLock() {
   const inventoryPanel = document.getElementById('inventory-panel');
 
   // Blocker click/tap to enter
-  blocker.addEventListener('click', () => {
-    lock();
-  });
-
+  // On touch devices a tap fires both touchend and a synthesized click. Use
+  // a flag to suppress the synthesized click after a touchend so we don't
+  // call lock() twice (which would dispatch duplicate lock listeners).
+  let suppressNextClick = false;
   blocker.addEventListener('touchend', (e) => {
     e.preventDefault();
+    suppressNextClick = true;
+    lock();
+  });
+  blocker.addEventListener('click', () => {
+    if (suppressNextClick) { suppressNextClick = false; return; }
     lock();
   });
 
@@ -131,6 +147,34 @@ function initPointerLock() {
   const invBtn = document.getElementById('mobile-inventory-btn');
   if (invBtn) {
     invBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleInventory();
+    });
+    // Also support desktop click on the mobile-styled button (e.g. testing
+    // in a desktop browser with the touch-device class forced).
+    invBtn.addEventListener('click', () => toggleInventory());
+  }
+
+  // Inventory close button (works for both desktop and mobile)
+  const invCloseBtn = document.getElementById('inventory-close');
+  if (invCloseBtn) {
+    invCloseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (S.inventory.isOpen) toggleInventory();
+    });
+    invCloseBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (S.inventory.isOpen) toggleInventory();
+    });
+  }
+
+  // Bag HUD click should also work on desktop (HTML inline onclick already
+  // covers this but we keep the path defensive in case the attribute is removed).
+  const bagHud = document.getElementById('bag-hud');
+  if (bagHud) {
+    bagHud.addEventListener('touchend', (e) => {
       e.preventDefault();
       e.stopPropagation();
       toggleInventory();

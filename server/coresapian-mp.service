@@ -1,0 +1,14 @@
+[Unit]
+Description=Coresapian Multiplayer WebSocket Relay Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/coresapian-mp
+ExecStart=/usr/bin/node mp_server.js
+Restart=always
+RestartSec=5
+Environment=PORT=8082
+
+[Install]
+WantedBy=multi-user.target

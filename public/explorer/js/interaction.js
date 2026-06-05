@@ -43,16 +43,16 @@ function updateInteraction() {
   _raycaster.setFromCamera(_center, S.camera);
   _raycaster.far = pickupRange;
 
-  // Check each item's meshes
+  // Check each item's meshes (cached at spawn time to avoid per-frame traverse)
   let closestItem = null;
   let closestDist = pickupRange;
 
   for (const item of S.pickableItems) {
     if (item.collected) continue;
-    const meshes = [];
-    item.mesh.traverse((child) => {
-      if (child.isMesh) meshes.push(child);
-    });
+    // item.meshes is the cached list from spawnPickableItems; fall back to
+    // traverse for items created elsewhere.
+    const meshes = item.meshes || [];
+    if (meshes.length === 0) continue;
     const hits = _raycaster.intersectObjects(meshes, false);
     if (hits.length > 0 && hits[0].distance < closestDist) {
       closestDist = hits[0].distance;
@@ -70,7 +70,6 @@ function updateInteraction() {
     S.highlightedItem = closestItem;
     if (promptEl) {
       promptEl.style.display = 'block';
-      promptEl.textContent = (S.CFG.interaction && S.CFG.interaction.pickup_prompt) || '[E] Pick up';
       promptEl.innerHTML = `<span class="prompt-name">${closestItem.name}</span> <span class="prompt-key">${S.isTouchDevice ? '[PICK UP]' : '[E]'}</span>`;
     }
   } else {

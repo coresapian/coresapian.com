@@ -1,4 +1,0 @@
-# CoreSapian.com — Python server dependencies
-# Install: pip install -r server/requirements.txt
-
-websockets>=13.0,<14.0

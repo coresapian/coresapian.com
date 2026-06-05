@@ -87,7 +87,6 @@ function parseYAML(text) {
   });
 
   const stack = [{ obj: {}, key: '__root__' }];
-  const result = {};
 
   for (const rawLine of lines) {
     const line = rawLine.trimEnd();
@@ -156,7 +155,12 @@ function parseYAML(text) {
     }
   }
 
-  return stack[0].obj.__root__ || result;
+  // Note: stack[0].obj IS the root object (all top-level keys were written into it).
+  // The previous `stack[0].obj.__root__ || result` was a bug — __root__ was never
+  // set, so the parser always returned the empty `result` fallback and silently
+  // dropped every value from config.yaml. The fallback FALLBACK_CONFIG was then
+  // used for everything, masking the bug.
+  return stack[0].obj;
 }
 
 function parseInlineKeys(text, obj) {
@@ -203,8 +207,9 @@ function parseValue(val) {
     return inner.split(',').map(s => parseValue(s.trim()));
   }
 
-  // Number
-  if (val !== '' && !isNaN(Number(val))) {
+  // Number — use strict regex; isNaN(Number(val)) is too aggressive (e.g., it
+  // would coerce a version string like "4.6" to the number 4.6).
+  if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(val)) {
     return Number(val);
   }
 

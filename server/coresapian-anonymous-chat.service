@@ -1,0 +1,17 @@
+[Unit]
+Description=CoreSapian Anonymous Chat Server (Node.js WebSocket)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node /opt/coresapian/server/anonymous_chat_server.js
+WorkingDirectory=/opt/coresapian/server
+Environment=CHAT_PORT=3001
+Environment=CHAT_DATA_DIR=/data
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

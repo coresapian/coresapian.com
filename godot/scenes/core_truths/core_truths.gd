@@ -268,37 +268,40 @@ func _apply_tablet_alpha(alpha: float) -> void:
 
 
 ## Set up multiplayer player spawning.
-## The server (peer 1) is authoritative for spawning all players.
-## In single-player / no-connection mode, we spawn locally immediately.
+## Only the SERVER spawns players — for itself (triggered by main.gd) and for
+## connecting peers. Clients receive their player via MultiplayerSpawner replication.
 func _setup_multiplayer_spawning() -> void:
 	var spawner: MultiplayerSpawner = $PlayerSpawner
 	if not spawner:
 		push_error("PlayerSpawner not found in CoreTruths scene!")
 		return
 
-	# Listen for new peers so the server can spawn their players.
+	# Server listens for new peers to spawn their players.
 	multiplayer.peer_connected.connect(_on_peer_connected)
-
-	# Spawn our own player.
-	# - No peer (editor / standalone): is_server() is true, spawn immediately.
-	# - We ARE the server: spawn immediately.
-	# - We're a client: the server will spawn for us via MultiplayerSpawner replication.
-	if multiplayer.is_server():
-		_spawn_player(multiplayer.get_unique_id())
+	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
 
 func _on_peer_connected(peer_id: int) -> void:
-	# Only the server spawns players.
 	if not multiplayer.is_server():
 		return
 	_spawn_player(peer_id)
+
+
+func _on_peer_disconnected(peer_id: int) -> void:
+	# Clean up the disconnected player's node on all peers.
+	var spawner: MultiplayerSpawner = $PlayerSpawner
+	if not spawner:
+		return
+	if spawner.has_node(str(peer_id)):
+		var node := spawner.get_node(str(peer_id))
+		node.queue_free()
+		print("[CoreTruths] Cleaned up player for peer %d" % peer_id)
 
 
 func _spawn_player(peer_id: int) -> void:
 	var spawner: MultiplayerSpawner = $PlayerSpawner
 	if not spawner:
 		return
-	# Avoid duplicates.
 	if spawner.has_node(str(peer_id)):
 		return
 	var player := PLAYER_SCENE.instantiate()

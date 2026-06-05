@@ -14,6 +14,8 @@ extends Node
 ##   3. On dedicated server: start server, no rendering
 ## ═══════════════════════════════════════════════════════════════════
 
+const PLAYER_SCENE: PackedScene = preload("res://scenes/core_truths/player.tscn")
+
 @export var fade_in_duration: float = 1.2
 @export var fade_out_duration: float = 0.8
 
@@ -21,6 +23,7 @@ extends Node
 @onready var current_scene: Node = $Temple if has_node("Temple") else null
 
 var _offline_label: Label = null
+var _player_spawned: bool = false
 
 
 func _ready() -> void:
@@ -33,18 +36,53 @@ func _ready() -> void:
 			fade_layer.queue_free()
 		_setup_world_signals()
 		_start_dedicated_server()
+		_spawn_local_player()
 		return
 
 	# ── Client / Web ──
 	_setup_world_signals()
 	_setup_offline_indicator()
-	_connect_to_server()
+
+	if OS.has_feature("editor"):
+		# Solo — spawn immediately, no MP connection
+		_spawn_local_player()
+	else:
+		# Web/native client: connect to server.
+		# If connection succeeds, the SERVER spawns our player via MultiplayerSpawner.
+		# If connection fails, spawn solo as fallback.
+		NetworkManager.connection_failed.connect(_on_connection_failed_spawn_solo)
+		_connect_to_server()
 
 	# Fade in the temple
 	if fade_rect:
 		fade_rect.color = Color(0, 0, 0, 1)
 		var fade_in := create_tween()
 		fade_in.tween_property(fade_rect, "color:a", 0.0, fade_in_duration)
+
+
+# ── Player spawning ──────────────────────────────────────────────
+
+func _spawn_local_player() -> void:
+	if _player_spawned:
+		return
+	var spawner: MultiplayerSpawner = get_node_or_null("Temple/PlayerSpawner") as MultiplayerSpawner
+	if not spawner:
+		push_error("[Main] PlayerSpawner not found!")
+		return
+	var peer_id := multiplayer.get_unique_id()
+	if spawner.has_node(str(peer_id)):
+		_player_spawned = true
+		return
+	var player := PLAYER_SCENE.instantiate()
+	player.name = str(peer_id)
+	spawner.add_child(player)
+	_player_spawned = true
+	print("[Main] Spawned local player (peer %d)" % peer_id)
+
+
+func _on_connection_failed_spawn_solo() -> void:
+	# Connection failed — spawn solo so the user can still explore.
+	_spawn_local_player()
 
 
 # ── Multiplayer ──────────────────────────────────────────────────
@@ -108,8 +146,17 @@ func _setup_offline_indicator() -> void:
 	_offline_label.name = "OfflineLabel"
 	_offline_label.text = "⚠  Offline — exploring solo"
 	_offline_label.visible = false
-	_offline_label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	# Center-top banner with fixed size
+	_offline_label.anchor_left = 0.5
+	_offline_label.anchor_top = 0.0
+	_offline_label.anchor_right = 0.5
+	_offline_label.anchor_bottom = 0.0
+	_offline_label.offset_left = -180
+	_offline_label.offset_top = 16
+	_offline_label.offset_right = 180
+	_offline_label.offset_bottom = 56
 	_offline_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_offline_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_offline_label.add_theme_font_size_override("font_size", 18)
 	_offline_label.add_theme_color_override("font_color", Color(1, 0.85, 0.3, 0.9))
 	var stylebox := StyleBoxFlat.new()
@@ -123,8 +170,6 @@ func _setup_offline_indicator() -> void:
 	stylebox.content_margin_top = 8.0
 	stylebox.content_margin_bottom = 8.0
 	_offline_label.add_theme_stylebox_override("normal", stylebox)
-	_offline_label.position = Vector2(0, 16)
-	_offline_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	layer.add_child(_offline_label)
 
 	NetworkManager.connection_failed.connect(_on_connection_failed)

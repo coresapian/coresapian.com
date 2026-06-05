@@ -16,9 +16,6 @@ signal server_disconnected
 signal player_connected(peer_id: int)
 signal player_disconnected(peer_id: int)
 
-## Emitted when the dedicated server has started and the world should initialize.
-signal world_ready
-
 const DEFAULT_PORT := 7000
 const DEFAULT_SERVER_IP := "127.0.0.1"
 
@@ -35,6 +32,7 @@ func _ready() -> void:
 
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+	multiplayer.connected_to_server.connect(_on_connected_to_server)
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
@@ -74,9 +72,6 @@ func start_dedicated_server(port: int = DEFAULT_PORT) -> void:
 	is_dedicated_server = true
 	print("Dedicated WebSocket server started on port %d" % port)
 
-	# Tell the scene manager to load the world immediately.
-	world_ready.emit()
-
 
 ## Disconnect from the server / stop hosting.
 func disconnect_network() -> void:
@@ -99,6 +94,11 @@ func get_peer_id() -> int:
 func _on_peer_connected(peer_id: int) -> void:
 	print("Player %d connected" % peer_id)
 	player_connected.emit(peer_id)
+
+
+func _on_connected_to_server() -> void:
+	print("Connected to server")
+	connection_succeeded.emit()
 
 
 func _on_peer_disconnected(peer_id: int) -> void:

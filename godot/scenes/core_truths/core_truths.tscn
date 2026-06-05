@@ -80,6 +80,29 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.11740711, 0)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.6156386, 0)
 shape = SubResource("3")
 
+[node name="TabletRing" type="Node3D" parent="." unique_id=910000001]
+
+[node name="HazeSpotlightA" type="SpotLight3D" parent="." unique_id=910000002]
+transform = Transform3D(0.7071, -0.5, 0.5, 0, 0.7071, 0.7071, -0.7071, -0.5, 0.5, 8, 12, 8)
+light_color = Color(1, 0.55, 0.0, 1)
+light_energy = 13.2
+spot_range = 35.0
+spot_angle = 55.0
+
+[node name="HazeSpotlightB" type="SpotLight3D" parent="." unique_id=910000003]
+transform = Transform3D(0.5, 0.5, -0.7071, -0.7071, 0.7071, 0, 0.5, 0.5, 0.7071, -8, 12, 8)
+light_color = Color(0.08, 0.95, 0.9, 1)
+light_energy = 10.5
+spot_range = 30.0
+spot_angle = 50.0
+
+[node name="HazeSpotlightC" type="SpotLight3D" parent="." unique_id=910000004]
+transform = Transform3D(0.866, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866, 0, 10, -10)
+light_color = Color(0.5, 0.04, 0.45, 1)
+light_energy = 8.3
+spot_range = 28.0
+spot_angle = 45.0
+
 [node name="PlayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1400065409]
 spawn_path = NodePath(".")
 spawnable_scenes = ["res://scenes/core_truths/player.tscn"]

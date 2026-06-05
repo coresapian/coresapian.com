@@ -171,7 +171,7 @@ func _disable_local_features() -> void:
 	# Show the nametag label above the remote player.
 	if player_label:
 		player_label.visible = true
-		player_label.text = "Player %d" % multiplayer.get_unique_id()
+		player_label.text = "Player %d" % int(name)
 
 
 # ── Input handling (unchanged from original) ───────────────────

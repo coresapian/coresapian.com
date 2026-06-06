@@ -113,6 +113,13 @@ function hideLoadingScreen() {
     }
     // Reveal chat toggle
     if (chatToggle) chatToggle.hidden = false;
+
+    // Focus canvas + trigger resize so the Godot engine begins rendering
+    // immediately after the loader hides (critical for iOS WKWebView).
+    if (canvas) {
+      try { canvas.focus({ preventScroll: true }); } catch {}
+    }
+    window.dispatchEvent(new Event("resize"));
   }, 400);
 }
 

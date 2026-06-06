@@ -53,11 +53,11 @@ func _ready() -> void:
 		NetworkManager.connection_failed.connect(_on_connection_failed_spawn_solo)
 		_connect_to_server()
 
-	# Fade in the temple
+	# The JS loading screen handles the visual transition (fade overlay).
+	# Start transparent so the temple is immediately visible when the JS
+	# loader hides. No Godot-side fade-in needed.
 	if fade_rect:
-		fade_rect.color = Color(0, 0, 0, 1)
-		var fade_in := create_tween()
-		fade_in.tween_property(fade_rect, "color:a", 0.0, fade_in_duration)
+		fade_rect.color = Color(0, 0, 0, 0)
 
 
 # ── Player spawning ──────────────────────────────────────────────

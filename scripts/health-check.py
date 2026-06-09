@@ -11,7 +11,7 @@ SERVICES = {
         "desc": "The Hearth-Fire — main website and game portal"
     },
     "godot_game": {
-        "url": "https://coresapian.com/game/index.html",
+        "url": "https://coresapian.com/",
         "name": "Godot Game Server",
         "desc": "The Great Hall — multiplayer temple server"
     },

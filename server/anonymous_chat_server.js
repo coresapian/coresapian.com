@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ═══════════════════════════════════════════════════════════════════
- * CORESAPIAN — Anonymous Chat WebSocket Server v2.0
+ * CORESAPIAN — Anonymous Chat WebSocket Server v2.1
  *
  * Lightweight Node.js WebSocket server for the Coresapian 3D lab
  * anonymous chat panel. No authentication, no usernames — all
@@ -13,8 +13,10 @@
  *   • Sends last 200 messages to new connections
  *   • WebSocket heartbeat (30s ping/pong) — cleans dead connections
  *   • Per-client rate limiting (max 10 msg / 10s)
+ *   • Max client limit (500)
  *   • Debounced file saves (max once per 2s)
  *   • Graceful shutdown with forced save
+ *   • Binds to localhost only (nginx proxies external traffic)
  *   • Message format: { text, timestamp }
  *
  * Usage:  node anonymous_chat_server.js [--port 3001] [--data /data]
@@ -110,20 +112,32 @@ const clients = new Map(); // ws → { rateLimiter, isAlive }
 function broadcast(payload) {
   for (const [client] of clients) {
     if (client.readyState === 1) { // WebSocket.OPEN === 1
-      client.send(payload);
+      try { client.send(payload); } catch {}
     }
   }
 }
 
 // ── WebSocket Server ────────────────────────────────────────────────
+const CHAT_ALLOWED_ORIGINS = [
+  "coresapian.com",
+  "game.coresapian.com",
+  "localhost",
+];
+
 const wss = new WebSocketServer({
   port: PORT,
-  host: "0.0.0.0",
-  // Allow no origin restriction (anonymous, same-origin via nginx)
-  verifyClient: () => true,
+  host: "127.0.0.1",
+  verifyClient: (info, cb) => {
+    const origin = info.origin || info.req.headers.origin || "";
+    if (!origin) return cb(true); // allow connections without origin (e.g. curl, non-browser)
+    const allowed = CHAT_ALLOWED_ORIGINS.some((o) => origin === o || origin.endsWith("://" + o) || origin.includes("://" + o + ":") || origin.includes("://" + o + "/"));
+    if (allowed) return cb(true);
+    console.warn(`[chat] Rejected connection from origin: ${origin}`);
+    cb(false, 403, "Forbidden origin");
+  },
 });
 
-console.log(`[chat] Anonymous chat server listening on ws://0.0.0.0:${PORT}`);
+console.log(`[chat] Anonymous chat server listening on ws://127.0.0.1:${PORT}`);
 console.log(`[chat] Persistence: ${LOG_FILE} (${history.length} messages loaded)`);
 
 wss.on("connection", (ws, req) => {
@@ -228,7 +242,8 @@ function shutdown(signal) {
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
-// Catch uncaught errors — don't crash
+// Catch uncaught errors — exit to let systemd restart
 process.on("uncaughtException", (err) => {
-  console.error("[chat] Uncaught exception:", err.message);
+  console.error("[chat] Uncaught exception — exiting:", err.message);
+  process.exit(1);
 });

@@ -3,14 +3,15 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>CoreSapian — 3D Lab Experience</title>
-    <meta name="description" content="Explore the Coresapian temple in a real-time 3D first-person experience. Walk through ancient halls, solve rune puzzles, and discover core truths.">
+    <title>CoreSapian — 3D Temple Experience</title>
+    <meta name="description" content="Explore the Coresapian temple in a real-time 3D first-person experience.">
     <meta name="theme-color" content="#FF8C00">
     <meta name="application-name" content="CoreSapian">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="CoreSapian">
     <meta name="mobile-web-app-capable" content="yes">
+    <link rel="canonical" href="https://coresapian.com/">
 
     <!-- Favicons -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -24,20 +25,21 @@
     <!-- Open Graph -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://coresapian.com/">
-    <meta property="og:title" content="CoreSapian — 3D Lab Experience">
+    <meta property="og:title" content="CoreSapian — 3D Temple Experience">
     <meta property="og:description" content="Explore the Coresapian temple in a real-time 3D first-person experience.">
     <meta property="og:image" content="https://coresapian.com/icons/android-chrome-512x512.png">
-    <meta property="og:site_name" content="CoreSapian Inc.">
+    <meta property="og:site_name" content="CoreSapian">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="CoreSapian — 3D Lab Experience">
+    <meta name="twitter:url" content="https://coresapian.com/">
+    <meta name="twitter:title" content="CoreSapian — 3D Temple Experience">
     <meta name="twitter:description" content="Explore the Coresapian temple in a real-time 3D first-person experience.">
     <meta name="twitter:image" content="https://coresapian.com/icons/android-chrome-512x512.png">
     <link rel="stylesheet" href="/game/game-shell.css">
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" crossorigin="anonymous">
   </head>
   <body>
     <main class="shell">
@@ -52,45 +54,44 @@
           ></audio>
 
           <canvas id="canvas">
-            Your browser does not support the canvas tag.
+            browser not supported
           </canvas>
 
           <noscript>
-            Your browser does not support JavaScript.
+            browser not supported
           </noscript>
 
-          <!-- ═══ CRT Terminal Loading Screen ═══ -->
-          <div id="crt-loader">
-            <div class="crt-loader__scanlines"></div>
-            <div class="crt-loader__content">
-              <div class="crt-loader__title">
-                CORESAPIAN LAB // LOADING...<span class="crt-cursor">█</span>
+          <!-- ═══ Loading Screen ═══ -->
+          <div id="loader">
+            <div class="loader__glow"></div>
+            <div class="loader__content">
+              <div class="loader__symbol">⟁</div>
+              <div class="loader__title">CORESAPIAN</div>
+              <div class="loader__subtitle">Enter the Temple</div>
+              <div class="loader__progress-wrap">
+                <div class="loader__progress">
+                  <div class="loader__progress-fill" id="loader-fill"></div>
+                </div>
+                <div class="loader__percent" id="loader-percent">0%</div>
               </div>
-              <div class="crt-loader__spinner" id="crt-spinner">|</div>
-              <div class="crt-loader__bar">
-                <div class="crt-loader__bar-fill" id="crt-bar-fill"></div>
-              </div>
-              <div class="crt-loader__percent" id="crt-percent">0%</div>
+              <div class="loader__status" id="loader-status">Initializing engine</div>
             </div>
-            <div class="crt-loader__error" id="crt-error" hidden>
-              [ERR] LOAD FAILED — TAP TO RETRY
+            <div class="loader__error" id="loader-error" hidden>
+              <div class="loader__error-text" id="loader-error-text">Connection failed</div>
+              <div class="loader__error-hint">tap to retry</div>
             </div>
-          </div>
-
-          <!-- ═══ Click popup (post-load) ═══ -->
-          <div id="click-overlay" hidden>
-            <div class="click-overlay__text">click</div>
           </div>
 
           <!-- ═══ Anonymous Chat Panel ═══ -->
           <button id="chat-toggle" class="chat-toggle" type="button" hidden>
-            [CHAT]<span class="chat-toggle__dot is-connecting" id="chat-status-dot"></span>
+            <span class="chat-toggle__icon">⌘</span>
+            <span class="chat-toggle__dot is-connecting" id="chat-status-dot"></span>
             <span class="chat-toggle__badge" id="chat-badge" hidden>0</span>
           </button>
           <div id="chat-panel" class="chat-panel is-hidden">
             <div class="chat-panel__header">
               <span>// CHAN_0</span>
-              <button id="chat-close" class="chat-panel__close" type="button">[X]</button>
+              <button id="chat-close" class="chat-panel__close" type="button">✕</button>
             </div>
             <div class="chat-panel__messages" id="chat-messages"></div>
             <div class="chat-panel__input-row">
@@ -99,37 +100,19 @@
                 placeholder="type and press enter..." maxlength="500"
                 autocomplete="off" autocorrect="off" autocapitalize="off"
                 spellcheck="false">
-              <button id="chat-send" class="chat-panel__send" type="button">[SEND]</button>
-            </div>
-          </div>
-
-          <!-- ═══ Toolbar ═══ -->
-          <div id="immersive-toolbar" class="shell__toolbar" aria-label="Scene controls" hidden>
-            <div class="shell__toolbar-pill">
-              <button id="sound-toggle" class="shell__button" type="button" aria-pressed="true">Sound</button>
-              <button id="fullscreen-toggle" class="shell__button" type="button">Fullscreen</button>
+              <button id="chat-send" class="chat-panel__send" type="button">⏎</button>
             </div>
           </div>
         </div>
       </section>
     </main>
 
-    <div id="rotate-gate" class="rotate-gate" hidden>
-      <div class="rotate-gate__card">
-        <p class="eyebrow">Landscape Required</p>
-        <h2>Rotate your device</h2>
-        <p>Turn your phone sideways, then tap below.</p>
-        <button id="rotate-launch" class="shell__button" type="button">Enter</button>
-      </div>
-    </div>
-
     <script>
-      window.__MP_SERVER_URL = "wss://" + location.hostname + "/ws/mp";
+      window.__MP_SERVER_URL = "wss://coresapian.com/ws/mp";
     </script>
     <script src="index.js"></script>
-    <script src="/shared/browser-overlay.js"></script>
     <script>
-      window.__GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":57026160,"index.wasm":37686550},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+      window.__GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":68313404,"index.wasm":37686550},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
     </script>
     <script type="module" src="/game/game-shell.js"></script>
   </body>

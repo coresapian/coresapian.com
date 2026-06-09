@@ -32,8 +32,11 @@ SERVICES = {
     },
 }
 
-STATUS_FILE = "/var/www/coresapian/status/status.json"
-HISTORY_FILE = "/var/www/coresapian/status/history.json"
+STATUS_FILE = "/var/lib/coresapian/status.json"
+HISTORY_FILE = "/var/lib/coresapian/history.json"
+
+# Ensure status directory exists
+os.makedirs(os.path.dirname(STATUS_FILE), exist_ok=True)
 
 SSL_CONTEXT = ssl.create_default_context()
 SSL_CONTEXT.check_hostname = True

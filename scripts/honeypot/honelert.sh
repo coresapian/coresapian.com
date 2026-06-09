@@ -34,7 +34,7 @@ USER_AGENT=$(echo "$LINE" | grep -oP '" "\K[^"]+(?="$)' || echo "unknown")
 
 # ── Log incident locally ──
 mkdir -p "$(dirname "$HONEYPOT_LOG")"
-echo "$(date +%Y-%m-%d_%H:%M:%S) | IP: $ATTACKER_IP | Method: $METHOD | Path: $PATH_HIT | UA: $USER_AGENT | Raw: $LINE" >> "$HONEYPOT_LOG"
+printf '%s | IP: %s | Method: %s | Path: %s | UA: %s | Raw: %s\n' "$(date +%Y-%m-%d_%H:%M:%S)" "$ATTACKER_IP" "$METHOD" "$PATH_HIT" "$USER_AGENT" "$LINE" >> "$HONEYPOT_LOG"
 
 # ── Email alert ──
 if [ -n "$ALERT_EMAIL" ]; then
@@ -69,9 +69,10 @@ fi
 # ── Append enrichment to incident log ──
 echo "  └─ rDNS: $RDNS | Geo: $GEO" >> "$HONEYPOT_LOG"
 
-# Report to Heimdall collector
-curl -s -X POST "http://192.168.0.150:9090/api/incident" \
-  -H "Content-Type: application/json" \
-  -d '{"site":"coresapian.com","ip":"'"$ATTACKER_IP"'","method":"'"$METHOD"'","path":"'"$PATH_HIT"'","user_agent":"'"$USER_AGENT"'","timestamp":"'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'","action":"banned"}' >/dev/null 2>&1 || true
+# Report to Heimdall collector (safe JSON encoding via Python)
+PAYLOAD=$(python3 -c "import json,sys; print(json.dumps({'site':'coresapian.com','ip':sys.argv[1],'method':sys.argv[2],'path':sys.argv[3],'user_agent':sys.argv[4],'timestamp':sys.argv[5],'action':'banned'}))" "$ATTACKER_IP" "$METHOD" "$PATH_HIT" "$USER_AGENT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)")
+curl -s -X POST 'http://192.168.0.150:9090/api/incident' \
+  -H 'Content-Type: application/json' \
+  -d "$PAYLOAD" >/dev/null 2>&1 || true
 
 exit 0

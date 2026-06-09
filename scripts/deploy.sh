@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Coresapian Auto-Versioning Deploy Script v2.0
+# Coresapian Auto-Versioning Deploy Script v3.0
 #
 # What it does:
 #   1. Hashes all versioned assets → short content-based cache-bust strings
@@ -9,10 +9,9 @@
 #   3. Patches COPIES of HTML files (never mutates source) with hashes
 #   4. SCPs everything to LXC 103, reloads nginx, verifies
 #
-# v2.0 changes:
-#   • Patches temporary copies, not source HTML files
-#   • Source files remain clean after deploy — Godot re-exports are safe
-#   • Post-patch verification aborts deploy on failure
+# v3.0 changes:
+#   • Root index.html is the sole entry point — no separate /game/ page
+#   • Removed browser-overlay.js (overlay system removed)
 #
 set -euo pipefail
 
@@ -49,7 +48,6 @@ size_file() {
 CSS_HASH=$(hash_file "$PROJECT_ROOT/public/game/game-shell.css")
 JS_HASH=$(hash_file "$PROJECT_ROOT/public/game/game-shell.js")
 ENGINE_HASH=$(hash_file "$PROJECT_ROOT/public/game/index.js")
-OVERLAY_HASH=$(hash_file "$PROJECT_ROOT/public/shared/browser-overlay.js")
 AUDIO_HASH=$(hash_file "$PROJECT_ROOT/assets/audio/orchastra-cinematic-001.mp3")
 PCK_HASH=$(hash_file "$PROJECT_ROOT/public/game/index.pck")
 WASM_HASH=$(hash_file "$PROJECT_ROOT/public/game/index.wasm")
@@ -58,20 +56,17 @@ WASM_SIZE=$(size_file "$PROJECT_ROOT/public/game/index.wasm")
 
 # The executable base name uses the WASM hash (engine loads ${executable}.wasm)
 # mainPack is set separately with the PCK hash (they have DIFFERENT content hashes)
-EXEC_GAME="/game/index-${WASM_HASH}"
 EXEC_ROOT="/game/index-${WASM_HASH}"
-MAINPACK_GAME="/game/index-${PCK_HASH}.pck"
 MAINPACK_ROOT="/game/index-${PCK_HASH}.pck"
 
 ok "CSS       → v=$CSS_HASH"
 ok "Shell JS  → v=$JS_HASH"
 ok "Engine JS → v=$ENGINE_HASH"
-ok "Overlay   → v=$OVERLAY_HASH"
 ok "Audio     → v=$AUDIO_HASH"
 ok "PCK hash  → $PCK_HASH ($PCK_SIZE bytes)"
 ok "WASM hash → $WASM_HASH ($WASM_SIZE bytes)"
-ok "Exec (wasm) → $EXEC_GAME"
-ok "MainPack    → $MAINPACK_GAME"
+ok "Exec (wasm) → $EXEC_ROOT"
+ok "MainPack    → $MAINPACK_ROOT"
 
 # ─── 2. Prepare staging directory ──────────────────────────────────
 STAGING="$PROJECT_ROOT/.deploy-staging"
@@ -80,22 +75,20 @@ mkdir -p "$STAGING"
 
 log "Staging HTML files (patching copies, not source)..."
 
-# Copy HTML files to staging — patches apply to copies only
-cp "$PROJECT_ROOT/public/game/index.html" "$STAGING/game-index.html"
+# Copy root HTML to staging — patches apply to copy only
 cp "$PROJECT_ROOT/public/index.html" "$STAGING/root-index.html"
 
-# ─── 3. Patch HTML copies ──────────────────────────────────────────
+# ─── 3. Patch HTML copy ───────────────────────────────────────────
 log "Patching HTML with content hashes..."
 
 patch_html() {
     local file="$1"
-    local overlay_path="$2"   # absolute path to browser-overlay.js
-    local css_path="$3"       # absolute path to game-shell.css
-    local js_path="$4"        # absolute path to game-shell.js
-    local engine_path="$5"    # absolute path to index.js
-    local audio_path="$6"     # absolute path to audio
-    local exec_value="$7"     # executable path for Godot config (WASM base)
-    local mainpack_value="$8" # mainPack path for Godot config (PCK path)
+    local css_path="$2"       # absolute path to game-shell.css
+    local js_path="$3"        # absolute path to game-shell.js
+    local engine_path="$4"    # absolute path to index.js
+    local audio_path="$5"     # absolute path to audio
+    local exec_value="$6"     # executable path for Godot config (WASM base)
+    local mainpack_value="$7" # mainPack path for Godot config (PCK path)
 
     # Remove ALL old version strings and old hashed filenames
     sed -i '' -E 's/\?v=[a-zA-Z0-9_-]+//g' "$file"
@@ -105,16 +98,23 @@ patch_html() {
     sed -i '' "s|${css_path}|${css_path}?v=${CSS_HASH}|g" "$file"
     sed -i '' "s|${js_path}|${js_path}?v=${JS_HASH}|g" "$file"
     sed -i '' "s|${engine_path}|${engine_path}?v=${ENGINE_HASH}|g" "$file"
-    sed -i '' "s|${overlay_path}|${overlay_path}?v=${OVERLAY_HASH}|g" "$file"
     sed -i '' "s|${audio_path}|${audio_path}?v=${AUDIO_HASH}|g" "$file"
 
-    # Replace executable + add mainPack in one pass
+    # Replace executable + add mainPack (macOS sed can't do \n in replacement, use python)
     sed -i '' -E '/"mainPack"/d' "$file"
-    sed -i '' -E "s|\"executable\":[[:space:]]*\"[^\"]*\"|\"executable\": \"${exec_value}\",\\n        \"mainPack\": \"${mainpack_value}\"|g" "$file"
+    python3 -c "
+import re, sys
+f = sys.argv[1]
+exec_val = sys.argv[2]
+pack_val = sys.argv[3]
+with open(f) as fh: txt = fh.read()
+txt = re.sub(r'\"executable\":\s*\"[^\"]*\"', '\"executable\": \"' + exec_val + '\",\n        \"mainPack\": \"' + pack_val + '\"', txt)
+with open(f, 'w') as fh: fh.write(txt)
+" "$file" "$exec_value" "$mainpack_value"
 
     # Replace fileSizes keys with correct hashed names and sizes
-    sed -i '' -E "s|\"[/a-zA-Z]*index[a-zA-Z0-9.-]*\\.wasm\":[[:space:]]*[0-9]+|\"${exec_value}.wasm\":${WASM_SIZE}|g" "$file"
-    sed -i '' -E "s|\"[/a-zA-Z]*index[a-zA-Z0-9.-]*\\.pck\":[[:space:]]*[0-9]+|\"${mainpack_value}\":${PCK_SIZE}|g" "$file"
+    sed -i '' -E "s|\"[/a-zA-Z]*index[a-zA-Z0-9.-]*\\.wasm\":\s*[0-9]+|\"${exec_value}.wasm\":${WASM_SIZE}|g" "$file"
+    sed -i '' -E "s|\"[/a-zA-Z]*index[a-zA-Z0-9.-]*\\.pck\":\s*[0-9]+|\"${mainpack_value}\":${PCK_SIZE}|g" "$file"
 
     # ── Verify patches actually applied ──
     local errors=0
@@ -137,20 +137,8 @@ patch_html() {
     fi
 }
 
-# --- game page ---
-patch_html "$STAGING/game-index.html" \
-    "/shared/browser-overlay.js" \
-    "/game/game-shell.css" \
-    "/game/game-shell.js" \
-    "/game/index.js" \
-    "/orchastra-cinematic-001.mp3" \
-    "$EXEC_GAME" \
-    "$MAINPACK_GAME"
-ok "Patched game/index.html (staged)"
-
 # --- root landing (the ONLY URL users visit) ---
 patch_html "$STAGING/root-index.html" \
-    "/shared/browser-overlay.js" \
     "/game/game-shell.css" \
     "/game/game-shell.js" \
     "/game/index.js" \
@@ -163,12 +151,10 @@ ok "Patched index.html (staged)"
 log "Deploying to $REMOTE..."
 
 # HTML + shell files (from staging, not source)
-scp -q "$STAGING/game-index.html"            "$REMOTE:$REMOTE_ROOT/game/index.html"
+scp -q "$STAGING/root-index.html"            "$REMOTE:$REMOTE_ROOT/index.html"
 scp -q "$PROJECT_ROOT/public/game/game-shell.css" "$REMOTE:$REMOTE_ROOT/game/game-shell.css"
 scp -q "$PROJECT_ROOT/public/game/game-shell.js"  "$REMOTE:$REMOTE_ROOT/game/game-shell.js"
 scp -q "$PROJECT_ROOT/public/game/index.js"       "$REMOTE:$REMOTE_ROOT/game/index.js"
-scp -q "$STAGING/root-index.html"            "$REMOTE:$REMOTE_ROOT/index.html"
-scp -q "$PROJECT_ROOT/public/shared/browser-overlay.js" "$REMOTE:$REMOTE_ROOT/shared/browser-overlay.js"
 ok "HTML + shell deployed"
 
 # Audio
@@ -183,6 +169,12 @@ log "Deploying hashed engine assets..."
 scp -q "$PROJECT_ROOT/public/game/index.pck"  "$REMOTE:$REMOTE_ROOT/game/index.pck"
 scp -q "$PROJECT_ROOT/public/game/index.wasm" "$REMOTE:$REMOTE_ROOT/game/index.wasm"
 
+# Upload audio worklet files (Godot loads these as ${executable}.audio.worklet.js etc.)
+scp -q "$PROJECT_ROOT/public/game/index.audio.position.worklet.js" \
+    "$REMOTE:$REMOTE_ROOT/game/index.audio.position.worklet.js"
+scp -q "$PROJECT_ROOT/public/game/index.audio.worklet.js" \
+    "$REMOTE:$REMOTE_ROOT/game/index.audio.worklet.js"
+
 # Create content-hashed copies on the server (also keep the base name as fallback)
 ssh "$REMOTE" bash -s <<REMOTE_SETUP
 set -e
@@ -192,6 +184,10 @@ cd $REMOTE_ROOT/game
 cp index.pck  "index-${PCK_HASH}.pck"
 cp index.wasm "index-${WASM_HASH}.wasm"
 
+# Copy worklet files with hashed prefix (Godot constructs URLs like index-HASH.audio.worklet.js)
+cp index.audio.position.worklet.js "index-${WASM_HASH}.audio.position.worklet.js"
+cp index.audio.worklet.js          "index-${WASM_HASH}.audio.worklet.js"
+
 # Clean up old hashed files (keep current + base only)
 for f in index-*.pck; do
     [ "\$f" = "index-${PCK_HASH}.pck" ] && continue
@@ -199,6 +195,14 @@ for f in index-*.pck; do
 done
 for f in index-*.wasm; do
     [ "\$f" = "index-${WASM_HASH}.wasm" ] && continue
+    rm -f "\$f"
+done
+for f in index-*.audio.position.worklet.js; do
+    [ "\$f" = "index-${WASM_HASH}.audio.position.worklet.js" ] || [ "\$f" = "index.audio.position.worklet.js" ] && continue
+    rm -f "\$f"
+done
+for f in index-*.audio.worklet.js; do
+    [ "\$f" = "index-${WASM_HASH}.audio.worklet.js" ] || [ "\$f" = "index.audio.worklet.js" ] && continue
     rm -f "\$f"
 done
 
@@ -233,8 +237,6 @@ for svc in nginx cloudflared coresapian-anonymous-chat coresapian-mp; do
 done
 echo "  Executable in root HTML:"
 grep -o '"executable"[^,]*' /var/www/coresapian/index.html
-echo "  Executable in game HTML:"
-grep -o '"executable"[^,]*' /var/www/coresapian/game/index.html
 echo "  Hash versions in root HTML:"
 grep -oE 'v=[a-f0-9]{8}' /var/www/coresapian/index.html | sort -u
 VERIFY
@@ -245,7 +247,7 @@ rm -rf "$STAGING"
 ok "Deploy complete!"
 echo ""
 echo -e "${GREEN}══════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  Coresapian v2.0 deployed — all caches busted ${NC}"
+echo -e "${GREEN}  Coresapian v3.0 deployed — all caches busted ${NC}"
 echo -e "${GREEN}══════════════════════════════════════════════${NC}"
 echo ""
 echo "  URL: https://coresapian.com/"

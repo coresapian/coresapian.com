@@ -40,10 +40,5 @@ Disallow: /
 
 User-agent: *
 Allow: /
-Disallow: /game/
-Disallow: /status/
-Disallow: /explorer/
-Disallow: /rune_puzzle/
-Disallow: /core_truths_book/
 
 Sitemap: https://coresapian.com/sitemap.xml

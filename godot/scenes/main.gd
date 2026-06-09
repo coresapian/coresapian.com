@@ -10,16 +10,12 @@ extends Node
 ##
 ## Flow:
 ##   1. Temple + player spawn immediately (no black screen)
-##   2. On web: auto-join wss://coresapian.com/ws/enet in background
+##   2. On web: auto-join wss://coresapian.com/ws/mp in background
 ##   3. On dedicated server: start server, no rendering
 ## ═══════════════════════════════════════════════════════════════════
 
 const PLAYER_SCENE: PackedScene = preload("res://scenes/core_truths/player.tscn")
 
-@export var fade_in_duration: float = 1.2
-@export var fade_out_duration: float = 0.8
-
-@onready var fade_rect: ColorRect = $FadeCanvasLayer/FadeOverlay if has_node("FadeCanvasLayer/FadeOverlay") else null
 @onready var current_scene: Node = $Temple if has_node("Temple") else null
 
 var _offline_label: Label = null
@@ -29,18 +25,11 @@ var _player_spawned: bool = false
 func _ready() -> void:
 	# ── Dedicated server mode ──
 	if NetworkManager.is_dedicated_server:
-		if fade_rect:
-			fade_rect.visible = false
-		var fade_layer = $FadeCanvasLayer if has_node("FadeCanvasLayer") else null
-		if fade_layer:
-			fade_layer.queue_free()
-		_setup_world_signals()
 		_start_dedicated_server()
 		_spawn_local_player()
 		return
 
 	# ── Client / Web ──
-	_setup_world_signals()
 	_setup_offline_indicator()
 
 	if OS.has_feature("editor"):
@@ -51,13 +40,8 @@ func _ready() -> void:
 		# If connection succeeds, the SERVER spawns our player via MultiplayerSpawner.
 		# If connection fails, spawn solo as fallback.
 		NetworkManager.connection_failed.connect(_on_connection_failed_spawn_solo)
+		NetworkManager.connection_succeeded.connect(_on_connection_succeeded_spawn_player)
 		_connect_to_server()
-
-	# The JS loading screen handles the visual transition (fade overlay).
-	# Start transparent so the temple is immediately visible when the JS
-	# loader hides. No Godot-side fade-in needed.
-	if fade_rect:
-		fade_rect.color = Color(0, 0, 0, 0)
 
 
 # ── Player spawning ──────────────────────────────────────────────
@@ -79,9 +63,13 @@ func _spawn_local_player() -> void:
 	_player_spawned = true
 	print("[Main] Spawned local player (peer %d)" % peer_id)
 
-
 func _on_connection_failed_spawn_solo() -> void:
 	# Connection failed — spawn solo so the user can still explore.
+	_spawn_local_player()
+
+func _on_connection_succeeded_spawn_player() -> void:
+	# Connection succeeded — ensure the local player is spawned.
+	# The server should have spawned via MultiplayerSpawner, but verify.
 	_spawn_local_player()
 
 
@@ -112,7 +100,6 @@ func _connect_to_server() -> void:
 	NetworkManager.player_name = player_name
 	NetworkManager.join_game(server_ip, server_port, player_name)
 
-
 func _read_web_config() -> Dictionary:
 	if not OS.has_feature("web"):
 		return {}
@@ -123,7 +110,6 @@ func _read_web_config() -> Dictionary:
 	if not (parsed is Dictionary):
 		return {}
 	return parsed
-
 
 func _start_dedicated_server() -> void:
 	var port := 7001
@@ -182,28 +168,10 @@ func _on_connection_failed() -> void:
 		_offline_label.visible = true
 		print("[Main] MP connection failed — showing offline indicator")
 
-
 func _on_connection_succeeded() -> void:
 	if _offline_label:
 		_offline_label.visible = false
 
-
 func _on_server_disconnected() -> void:
 	if _offline_label:
 		_offline_label.visible = true
-
-
-# ── World signals ────────────────────────────────────────────────
-
-func _setup_world_signals() -> void:
-	if current_scene and current_scene.has_signal("experience_completed"):
-		current_scene.experience_completed.connect(_on_experience_completed)
-
-
-func _on_experience_completed() -> void:
-	if NetworkManager.is_dedicated_server:
-		return
-	if not fade_rect:
-		return
-	var fade_out := create_tween()
-	fade_out.tween_property(fade_rect, "color:a", 1.0, fade_out_duration)

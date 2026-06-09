@@ -44,7 +44,11 @@ func join_game(host: String = DEFAULT_SERVER_IP, port: int = DEFAULT_PORT, name:
 	player_name = name
 
 	# Build WebSocket URL — TLS terminated by Cloudflare/nginx
-	var ws_url := "wss://%s/ws/enet" % host
+	var ws_url: String
+	if port != 0 and port != DEFAULT_PORT:
+		ws_url = "wss://%s:%d/ws/mp" % [host, port]
+	else:
+		ws_url = "wss://%s/ws/mp" % host
 	print("Connecting via WebSocket: %s" % ws_url)
 	var ws_peer := WebSocketMultiplayerPeer.new()
 	var err := ws_peer.create_client(ws_url)

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ═══════════════════════════════════════════════════════════════════
- * CORESAPIAN — Multiplayer Orbs Relay Server v2.0
+ * CORESAPIAN — Multiplayer Orbs Relay Server v2.1
  *
  * Lightweight WebSocket relay: each client sends position updates,
  * server broadcasts them to every other connected client.
@@ -15,6 +15,8 @@
  *
  * Features:
  *   • Per-client rate limiting (max 30 msg/s)
+ *   • Max client limit (50)
+ *   • Input validation (position values clamped)
  *   • Heartbeat ping/pong (30s) — cleans dead connections
  *   • Graceful shutdown on SIGTERM/SIGINT
  *   • HTTP health endpoint at /
@@ -32,6 +34,8 @@ const http = require("http");
 // ── Config ──────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.PORT || "8082", 10);
 const MAX_MSG_PER_SEC = 30;
+const MAX_CLIENTS = 50;
+const MAX_POS_VALUE = 10000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -44,8 +48,23 @@ function makeId() {
   return id;
 }
 
+function generateUniqueId() {
+  let id;
+  do {
+    id = makeId();
+  } while ([...clients.values()].some(c => c.id === id));
+  return id;
+}
+
 function timestamp() { return new Date().toISOString(); }
 function now() { return Date.now() / 1000; }
+
+/** Clamp a number to [-MAX, MAX], return 0 if not finite. */
+function clampPos(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(-MAX_POS_VALUE, Math.min(MAX_POS_VALUE, n));
+}
 
 // ── State ───────────────────────────────────────────────────────────
 const clients = new Map(); // ws → { id, msgCount, lastCountReset, isAlive }
@@ -58,7 +77,7 @@ function broadcast(json, exclude = null) {
   const msg = JSON.stringify(json);
   for (const [ws] of clients) {
     if (ws !== exclude && ws.readyState === WebSocket.OPEN) {
-      ws.send(msg);
+      try { ws.send(msg); } catch {}
     }
   }
 }
@@ -75,10 +94,32 @@ const server = http.createServer((req, res) => {
 });
 
 // ── WebSocket Server ────────────────────────────────────────────────
-const wss = new WebSocketServer({ server });
+const ALLOWED_ORIGINS = [
+  "coresapian.com",
+  "game.coresapian.com",
+  "localhost",
+];
+
+const wss = new WebSocketServer({
+  server,
+  verifyClient: (info, cb) => {
+    const origin = info.origin || info.req.headers.origin || "";
+    if (!origin) return cb(true); // allow connections without origin (e.g. curl, non-browser)
+    const allowed = ALLOWED_ORIGINS.some((o) => origin === o || origin.endsWith("://" + o) || origin.includes("://" + o + ":") || origin.includes("://" + o + "/"));
+    if (allowed) return cb(true);
+    console.warn(`[coresapian-mp] Rejected connection from origin: ${origin}`);
+    cb(false, 403, "Forbidden origin");
+  },
+});
 
 wss.on("connection", (ws) => {
-  const id = makeId();
+  // Enforce max clients
+  if (clients.size >= MAX_CLIENTS) {
+    ws.close(1013, "Maximum connections reached");
+    return;
+  }
+
+  const id = generateUniqueId();
   const client = {
     id,
     msgCount: 0,
@@ -114,11 +155,11 @@ wss.on("connection", (ws) => {
       broadcast({
         type: "pos",
         id,
-        x: msg.x || 0,
-        y: msg.y || 0,
-        z: msg.z || 0,
-        ry: msg.ry || 0,
-        rx: msg.rx || 0,
+        x: clampPos(msg.x),
+        y: clampPos(msg.y),
+        z: clampPos(msg.z),
+        ry: clampPos(msg.ry),
+        rx: clampPos(msg.rx),
       }, ws);
     }
   });
@@ -169,11 +210,12 @@ process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 
 process.on("uncaughtException", (err) => {
-  console.error("[coresapian-mp] Uncaught exception:", err.message);
+  console.error("[coresapian-mp] Uncaught exception — exiting:", err.message);
+  process.exit(1);
 });
 
 // ── Start ───────────────────────────────────────────────────────────
-server.listen(PORT, () => {
-  console.log(`[coresapian-mp] Listening on ws://0.0.0.0:${PORT}`);
+server.listen(PORT, "127.0.0.1", () => {
+  console.log(`[coresapian-mp] Listening on ws://127.0.0.1:${PORT}`);
   console.log(`[coresapian-mp] Health check: http://localhost:${PORT}/`);
 });

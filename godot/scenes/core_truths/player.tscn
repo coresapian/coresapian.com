@@ -7,15 +7,6 @@
 radius = 0.35
 height = 1.2
 
-[sub_resource type="StandardMaterial3D" id="nameplate_mat"]
-albedo_color = Color(0.08, 0.95, 0.9, 1)
-emission_enabled = true
-emission = Color(0.08, 0.95, 0.9, 1)
-emission_energy_multiplier = 0.8
-billboard_mode = 1
-no_depth_test = true
-disable_receive_shadows = true
-
 [node name="Player" type="CharacterBody3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6080936, 6.969077)
 script = ExtResource("ctrl")
@@ -41,9 +32,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
 current = true
 near = 0.03
 
-[node name="InteractRay" type="RayCast3D" parent="Head"]
-target_position = Vector3(0, 0, -3)
-
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="Crosshair" type="Label" parent="HUD"]
@@ -61,21 +49,6 @@ theme_override_font_sizes/font_size = 28
 text = "+"
 horizontal_alignment = 1
 vertical_alignment = 1
-
-[node name="InteractLabel" type="Label" parent="HUD"]
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -220.0
-offset_top = -132.0
-offset_right = 220.0
-offset_bottom = -84.0
-theme_override_colors/font_color = Color(0.9, 1, 0.98, 1)
-theme_override_font_sizes/font_size = 24
-text = "Press E to interact"
-horizontal_alignment = 1
 
 [node name="GearButton" type="Button" parent="HUD"]
 anchors_preset = 1
@@ -130,7 +103,7 @@ offset_bottom = -32.0
 mouse_filter = 2
 color = Color(0.02, 0.08, 0.12, 0.12)
 
-[node name="RiseButton" type="Button" parent="HUD/TouchControls"]
+[node name="JumpButton" type="Button" parent="HUD/TouchControls"]
 anchor_left = 1.0
 anchor_top = 1.0
 anchor_right = 1.0
@@ -141,30 +114,4 @@ offset_right = -24.0
 offset_bottom = -64.0
 theme_override_colors/font_color = Color(0.9, 1, 0.98, 1)
 theme_override_font_sizes/font_size = 24
-text = "Rise"
-
-[node name="DescendButton" type="Button" parent="HUD/TouchControls"]
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -460.0
-offset_top = -144.0
-offset_right = -252.0
-offset_bottom = -64.0
-theme_override_colors/font_color = Color(0.9, 1, 0.98, 1)
-theme_override_font_sizes/font_size = 24
-text = "Descend"
-
-[node name="InteractButton" type="Button" parent="HUD/TouchControls"]
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -232.0
-offset_top = -240.0
-offset_right = -24.0
-offset_bottom = -160.0
-theme_override_colors/font_color = Color(0.9, 1, 0.98, 1)
-theme_override_font_sizes/font_size = 24
-text = "Interact"
+text = "Jump"

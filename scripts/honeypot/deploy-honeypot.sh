@@ -9,6 +9,10 @@
 #   - nginx + fail2ban installed
 #   - Cloudflare Tunnel configured (TLS)
 #   - This repo cloned/copied to /opt/coresapian/coresapian.com
+#
+# IMPORTANT: This deploys the honeypot as a SEPARATE nginx config
+# file (coresapian-honeypot) alongside the production config
+# (coresapian). The production config is NEVER overwritten.
 # ─────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -20,8 +24,9 @@ REMOTE_REPO="/opt/coresapian/coresapian.com"
 echo "==> Deploying honeypot stack to $TARGET (LXC 103) ..."
 
 # ── Copy config files ──
-echo "  [1/6] Copying nginx config ..."
-scp "$SCRIPT_DIR/honeypot-nginx.conf" "root@$TARGET:/etc/nginx/sites-available/coresapian"
+# NOTE: Honeypot config goes to a SEPARATE file — does NOT touch production
+echo "  [1/6] Copying honeypot nginx config (as separate site, NOT overwriting production) ..."
+scp "$SCRIPT_DIR/honeypot-nginx.conf" "root@$TARGET:/etc/nginx/sites-available/coresapian-honeypot"
 
 echo "  [2/6] Copying Fail2Ban filter ..."
 scp "$SCRIPT_DIR/fail2ban-filter.conf" "root@$TARGET:/etc/fail2ban/filter.d/coresapian-honeypot.conf"
@@ -40,8 +45,14 @@ echo "  [5/6] Configuring on remote ..."
 ssh "root@$TARGET" bash -s <<'REMOTE'
 set -e
 
-# Symlink nginx site
-ln -sf /etc/nginx/sites-available/coresapian /etc/nginx/sites-enabled/coresapian
+# Symlink honeypot site as a SEPARATE config — production (coresapian) is untouched
+ln -sf /etc/nginx/sites-available/coresapian-honeypot /etc/nginx/sites-enabled/coresapian-honeypot
+
+# Verify production config still exists and warn if missing
+if [ ! -f /etc/nginx/sites-available/coresapian ]; then
+    echo "  ⚠ WARNING: /etc/nginx/sites-available/coresapian not found!"
+    echo "    The production config should be deployed separately."
+fi
 
 # Create honeypot log files with correct permissions
 touch /var/log/nginx/honeypot-access.log
@@ -69,5 +80,7 @@ ssh "root@$TARGET" "fail2ban-client status coresapian-honeypot" || {
 
 echo ""
 echo "==> Done! Honeypot active on $TARGET"
+echo "    Production config: /etc/nginx/sites-available/coresapian (untouched)"
+echo "    Honeypot config:   /etc/nginx/sites-available/coresapian-honeypot (new)"
 echo "    Monitor: ssh root@$TARGET tail -f /var/log/honeypot-incidents.log"
 echo "    Bans:    ssh root@$TARGET fail2ban-client status coresapian-honeypot"

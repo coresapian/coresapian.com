@@ -1,7 +1,6 @@
 {
   "name": "coresapian-mp-server",
   "version": "1.0.0",
-  "type": "module",
   "description": "WebSocket relay server for Coresapian multiplayer orbs",
   "main": "mp_server.js",
   "scripts": {

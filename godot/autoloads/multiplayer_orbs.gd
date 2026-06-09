@@ -47,7 +47,10 @@ func _ready() -> void:
 			if js_url != null and js_url != "":
 				server_url = str(js_url)
 			else:
-				var host := str(JavaScriptBridge.eval("location.hostname"))
+				var eval_host = JavaScriptBridge.eval("location.hostname", true)
+				var host := "coresapian.com"
+				if eval_host != null:
+					host = str(eval_host)
 				server_url = "wss://%s/ws/mp" % host if host != "" else "ws://localhost:8082"
 		else:
 			server_url = "ws://localhost:8082"

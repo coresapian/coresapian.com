@@ -1,34 +1,40 @@
 extends CharacterBody3D
 
-## First-person player controller with multiplayer support.
+## First-person player controller with gravity-based walking and multiplayer support.
+## WASD to walk, Space to jump, Ctrl/C to crouch, Shift to sprint.
 ## When this node has multiplayer authority (is the local player), it reads
 ## input and replicates position/rotation via @rpc. Remote instances
 ## receive the updates and interpolate into place.
 
 @export var walk_speed: float = 5.5
 @export var sprint_speed: float = 9.0
-@export var vertical_speed: float = 4.8
+@export var jump_velocity: float = 6.5
 @export var mouse_sensitivity: float = 0.0022
 @export var touch_look_sensitivity: float = 0.0045
 @export var touch_move_radius: float = 88.0
-@export var hover_damping: float = 6.0
-@export var interaction_distance: float = 3.0
+
+## Gravity acceleration (m/s²). Godot's default matches Earth ~9.8.
+@export var gravity: float = 9.8
+
+## Crouch parameters.
+@export var crouch_depth: float = 0.5
+@export var crouch_speed_multiplier: float = 0.5
+
+## Snap distance for floor detection — prevents bouncing on slopes.
+@export var floor_snap_length: float = 0.3
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
-@onready var interact_ray: RayCast3D = $Head/InteractRay
 @onready var crosshair: Label = $HUD/Crosshair
-@onready var interact_label: Label = $HUD/InteractLabel
 @onready var settings_menu: Control = $HUD/SettingsMenu
 @onready var gear_button: Button = $HUD/GearButton
 @onready var touch_controls: Control = $HUD/TouchControls
 @onready var move_pad: Control = $HUD/TouchControls/MovePad
 @onready var move_knob: Control = $HUD/TouchControls/MovePad/MoveKnob
 @onready var look_pad: Control = $HUD/TouchControls/LookPad
-@onready var rise_button: Button = $HUD/TouchControls/RiseButton
-@onready var descend_button: Button = $HUD/TouchControls/DescendButton
-@onready var interact_button: Button = $HUD/TouchControls/InteractButton
+@onready var jump_button: Button = $HUD/TouchControls/JumpButton
 @onready var player_label: Label3D = $PlayerLabel
+@onready var collision_shape: CollisionShape3D = $PlayerCollisionShape
 
 var _pitch: float = 0.0
 var _touch_controls_enabled: bool = false
@@ -36,8 +42,12 @@ var _touch_move_id: int = -1
 var _touch_look_id: int = -1
 var _touch_move_vector: Vector2 = Vector2.ZERO
 var _touch_look_previous: Vector2 = Vector2.ZERO
-var _rise_requested: bool = false
-var _descend_requested: bool = false
+
+## Crouch state.
+var _is_crouching: bool = false
+var _stand_height: float = 1.2
+var _stand_head_y: float = 0.65
+var _target_head_y: float = 0.65
 
 ## Position that remote peers are interpolating toward.
 var _sync_position := Vector3.ZERO
@@ -46,25 +56,30 @@ var _sync_rotation_y: float = 0.0
 ## Pitch (head X rotation) that remote peers are interpolating toward.
 var _sync_pitch: float = 0.0
 
+## Threshold tracking to avoid sending sync_transform every frame.
+var _last_sent_pos := Vector3.ZERO
+var _last_sent_rot_y: float = 0.0
+var _last_sent_pitch: float = 0.0
+const SYNC_THRESHOLD_POS := 0.01
+const SYNC_THRESHOLD_ROT := 0.01
+
 
 func _ready() -> void:
 	# Authority is determined by the node name (set by MultiplayerSpawner to the peer ID).
 	# This way each peer grants authority to the correct player instance.
-	var peer_id := int(name)
+	var peer_id := name.to_int()
 	set_multiplayer_authority(peer_id)
 
 	var is_local := is_multiplayer_authority()
 
 	_ensure_input_map()
-	interact_ray.target_position = Vector3(0, 0, -interaction_distance)
-	interact_label.visible = false
 
 	# Only the local player processes input and shows HUD.
 	if not is_local:
 		_disable_local_features()
 		return
 
-	# Local player setup (same as original).
+	# Local player setup.
 	_touch_controls_enabled = _should_use_touch_controls()
 	touch_controls.visible = _touch_controls_enabled
 	crosshair.visible = not _touch_controls_enabled
@@ -74,13 +89,16 @@ func _ready() -> void:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	gear_button.pressed.connect(_on_gear_button_pressed)
 	settings_menu.settings_closed.connect(_on_settings_closed)
-	rise_button.button_down.connect(_on_rise_button_down)
-	rise_button.button_up.connect(_on_rise_button_up)
-	descend_button.button_down.connect(_on_descend_button_down)
-	descend_button.button_up.connect(_on_descend_button_up)
-	interact_button.button_down.connect(_on_interact_button_down)
+	if jump_button:
+		jump_button.button_down.connect(_on_jump_button_down)
+		jump_button.button_up.connect(_on_jump_button_up)
 	get_viewport().size_changed.connect(_reset_touch_visuals)
 	call_deferred("_reset_touch_visuals")
+
+	# Set up CharacterBody3D floor properties.
+	up_direction = Vector3.UP
+	floor_stop_on_slope = true
+	floor_snap_length = floor_snap_length
 
 
 func _physics_process(delta: float) -> void:
@@ -90,21 +108,41 @@ func _physics_process(delta: float) -> void:
 		_interpolate_remote_state(delta)
 
 
-func _process_local_input(_delta: float) -> void:
+func _process_local_input(delta: float) -> void:
+	# ── Gravity ──
+	if not is_on_floor():
+		velocity.y -= gravity * delta
+
+	# ── Jump ──
+	var jump_requested := Input.is_action_just_pressed("jump") or _touch_jump_requested
+	_touch_jump_requested = false
+	if jump_requested and is_on_floor():
+		velocity.y = jump_velocity
+
+	# ── Crouch ──
+	_update_crouch(delta)
+
+	# ── Horizontal movement ──
 	var move_dir: Vector3 = _read_move_input()
+	# TODO (L6): No sprint touch button exists yet — sprint is keyboard-only on mobile.
 	var speed: float = sprint_speed if Input.is_action_pressed("sprint") else walk_speed
-	var current_vertical_speed: float = vertical_speed
-	if Input.is_action_pressed("sprint"):
-		current_vertical_speed *= 1.25
+	if _is_crouching:
+		speed *= crouch_speed_multiplier
 
 	_apply_move_velocity(move_dir, speed)
-	_apply_vertical_velocity(current_vertical_speed)
 
 	move_and_slide()
-	_update_interaction_prompt()
 
-	# Replicate transform to remote peers.
-	sync_transform.rpc(global_position, global_rotation.y, _pitch)
+	# Replicate transform to remote peers (only when connected and changed beyond threshold).
+	if multiplayer.has_multiplayer_peer() and multiplayer.get_peers().size() > 0:
+		var pos_delta := global_position.distance_to(_last_sent_pos)
+		var rot_delta := absf(global_rotation.y - _last_sent_rot_y)
+		var pitch_delta := absf(_pitch - _last_sent_pitch)
+		if pos_delta > SYNC_THRESHOLD_POS or rot_delta > SYNC_THRESHOLD_ROT or pitch_delta > SYNC_THRESHOLD_ROT:
+			sync_transform.rpc(global_position, global_rotation.y, _pitch)
+			_last_sent_pos = global_position
+			_last_sent_rot_y = global_rotation.y
+			_last_sent_pitch = _pitch
 
 
 func _read_move_input() -> Vector3:
@@ -123,17 +161,40 @@ func _apply_move_velocity(move_dir: Vector3, speed: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, speed)
 
 
-func _apply_vertical_velocity(current_vertical_speed: float) -> void:
-	var rise_active := _rise_requested or Input.is_action_pressed("jump") or Input.is_action_pressed("move_up")
-	var descend_active := _descend_requested or Input.is_action_pressed("move_down")
+# ── Crouch ───────────────────────────────────────────────────────
 
-	if rise_active and not descend_active:
-		velocity.y = current_vertical_speed
-	elif descend_active and not rise_active:
-		velocity.y = -current_vertical_speed
-	else:
-		velocity.y = move_toward(velocity.y, 0.0, hover_damping * get_physics_process_delta_time() * current_vertical_speed)
+var _touch_jump_requested: bool = false
 
+func _update_crouch(delta: float) -> void:
+	var crouch_held := Input.is_action_pressed("move_down")
+	if crouch_held and not _is_crouching:
+		_is_crouching = true
+		_target_head_y = _stand_head_y - crouch_depth
+		if collision_shape and collision_shape.shape:
+			collision_shape.shape.height = _stand_height - crouch_depth
+			collision_shape.position.y = -crouch_depth * 0.5
+	elif not crouch_held and _is_crouching:
+		# Only uncrouch if there's room above — raycast from head upward.
+		var can_stand := true
+		if collision_shape and collision_shape.shape:
+			var space_state := get_world_3d().direct_space_state
+			var ray_origin := head.global_position
+			var ray_target := ray_origin + Vector3.UP * crouch_depth
+			var ray_query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target, collision_mask, [self])
+			var ray_result := space_state.intersect_ray(ray_query)
+			can_stand = ray_result.is_empty()
+		if can_stand:
+			_is_crouching = false
+			_target_head_y = _stand_head_y
+			if collision_shape and collision_shape.shape:
+				collision_shape.shape.height = _stand_height
+				collision_shape.position.y = 0.0
+
+	# Smoothly lerp head to target height.
+	head.position.y = lerp(head.position.y, _target_head_y, 10.0 * delta)
+
+
+# ── Remote sync ──────────────────────────────────────────────────
 
 ## Called on remote peers to receive authoritative position/rotation updates.
 @rpc("authority", "call_remote", "unreliable")
@@ -143,16 +204,17 @@ func sync_transform(pos: Vector3, rot_y: float, pitch: float) -> void:
 	_sync_pitch = pitch
 
 
-func _interpolate_remote_state(_delta: float) -> void:
+func _interpolate_remote_state(delta: float) -> void:
 	# Snap / lerp toward the authoritative state.
-	# Using lerp for smooth movement; snap if very far away (teleport).
+	# Using delta-based lerp for consistent convergence regardless of framerate.
+	var weight := 1.0 - pow(0.001, delta)
 	var dist := global_position.distance_to(_sync_position)
 	if dist > 10.0:
 		global_position = _sync_position
 	else:
-		global_position = global_position.lerp(_sync_position, 0.25)
-	global_rotation.y = lerp_angle(global_rotation.y, _sync_rotation_y, 0.25)
-	_pitch = lerp_angle(_pitch, _sync_pitch, 0.25)
+		global_position = global_position.lerp(_sync_position, weight)
+	global_rotation.y = lerp_angle(global_rotation.y, _sync_rotation_y, weight)
+	_pitch = lerp_angle(_pitch, _sync_pitch, weight)
 	head.rotation.x = _pitch
 
 
@@ -174,7 +236,7 @@ func _disable_local_features() -> void:
 		player_label.text = "Player %d" % int(name)
 
 
-# ── Input handling (unchanged from original) ───────────────────
+# ── Input handling ───────────────────────────────────────────────
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _touch_controls_enabled:
@@ -206,41 +268,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif not _should_defer_mouse_capture():
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
-	if event.is_action_pressed("interact"):
-		_try_interact()
-
-
-func _update_interaction_prompt() -> void:
-	interact_ray.force_raycast_update()
-	var collider := interact_ray.get_collider()
-	if collider and collider is Node and (collider as Node).is_in_group("interactable"):
-		interact_label.visible = true
-		if collider.has_meta("interact_text"):
-			interact_label.text = str(collider.get_meta("interact_text"))
-		else:
-			interact_label.text = "Press E to interact"
-	else:
-		interact_label.visible = false
-
-
-func _try_interact() -> void:
-	interact_ray.force_raycast_update()
-	var collider := interact_ray.get_collider()
-	if collider and collider is Node and (collider as Node).is_in_group("interactable"):
-		var node := collider as Node
-
-		# Browser URL takes priority — opens an iframe overlay
-		if node.has_meta("browser_url"):
-			var url: String = node.get_meta("browser_url")
-			var title: String = node.get_meta("browser_title", "Browser")
-			BrowserOverlay.open_browser(url, title)
-			return
-
-		print("Interacted with: %s" % node.name)
-		if node.has_meta("on_interact_message"):
-			interact_label.text = str(node.get_meta("on_interact_message"))
-			interact_label.visible = true
-
 
 func _ensure_input_map() -> void:
 	_bind_key("move_forward", KEY_W)
@@ -252,12 +279,9 @@ func _ensure_input_map() -> void:
 	_bind_key("move_right", KEY_D)
 	_bind_key("move_right", KEY_RIGHT)
 	_bind_key("jump", KEY_SPACE)
-	_bind_key("move_up", KEY_SPACE)
 	_bind_key("move_down", KEY_CTRL)
 	_bind_key("move_down", KEY_C)
 	_bind_key("sprint", KEY_SHIFT)
-	_bind_key("interact", KEY_E)
-	_bind_key("interact", KEY_F)
 
 
 func _bind_key(action: StringName, keycode: Key) -> void:
@@ -283,6 +307,8 @@ func _should_use_touch_controls() -> bool:
 func _should_defer_mouse_capture() -> bool:
 	return OS.has_feature("web") and not _touch_controls_enabled
 
+
+# ── Touch controls ───────────────────────────────────────────────
 
 func _handle_touch_press(event: InputEventScreenTouch) -> void:
 	if event.pressed:
@@ -327,30 +353,18 @@ func _reset_touch_visuals() -> void:
 	move_knob.position = (move_pad.size - move_knob.size) * 0.5
 
 
+func _on_jump_button_down() -> void:
+	_touch_jump_requested = true
+
+
+func _on_jump_button_up() -> void:
+	pass
+
+
 func _apply_look_delta(delta: Vector2, sensitivity: float) -> void:
 	rotate_y(-delta.x * sensitivity)
 	_pitch = clampf(_pitch - delta.y * sensitivity, deg_to_rad(-75), deg_to_rad(75))
 	head.rotation.x = _pitch
-
-
-func _on_rise_button_down() -> void:
-	_rise_requested = true
-
-
-func _on_rise_button_up() -> void:
-	_rise_requested = false
-
-
-func _on_descend_button_down() -> void:
-	_descend_requested = true
-
-
-func _on_descend_button_up() -> void:
-	_descend_requested = false
-
-
-func _on_interact_button_down() -> void:
-	_try_interact()
 
 
 func set_mouse_sensitivity(value: float) -> void:

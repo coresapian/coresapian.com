@@ -7,7 +7,7 @@
  *   • Removed toolbar (sound/fullscreen buttons) — was blocking iOS
  *   • New loading screen with progress + status messages
  *   • Audio auto-activates on first touch/click (no toggle needed)
- *   • Rotate gate simplified (no button, just instruction text)
+ *   • Removed rotate gate — game works in any orientation
  * ═══════════════════════════════════════════════════════════════════
  */
 
@@ -28,7 +28,6 @@ const chatSend = document.getElementById("chat-send");
 const chatClose = document.getElementById("chat-close");
 const chatStatusDot = document.getElementById("chat-status-dot");
 const chatBadge = document.getElementById("chat-badge");
-const rotateGate = document.getElementById("rotate-gate");
 const GODOT_CONFIG = window.__GODOT_CONFIG;
 const THREADS_ENABLED = false;
 const PROGRESS_STALL_TIMEOUT_MS = 120_000;
@@ -229,7 +228,7 @@ function escapeHtml(str) {
 function appendChatMessage(msg) {
   const div = document.createElement("div");
   div.className = "chat-msg";
-  const time = msg.timestamp ? formatTime(msg.timestamp) : "";
+  const time = msg.timestamp ? escapeHtml(formatTime(msg.timestamp)) : "";
   div.innerHTML = `<span class="chat-msg__time">${time}</span>${escapeHtml(msg.text)}`;
   chatMessages.appendChild(div);
   while (chatMessages.children.length > 200) {
@@ -312,31 +311,6 @@ async function activateAudio() {
       if (ambientAudio.paused) await ambientAudio.play();
     } catch (e) { /* autoplay may still be blocked */ }
   }
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// SECTION 4 — Orientation Gate
-// ═══════════════════════════════════════════════════════════════════
-
-function isHandheldDevice() {
-  const ua = navigator.userAgent || "";
-  const platform = navigator.platform || "";
-  const hasCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
-  const maxTouchPoints = navigator.maxTouchPoints || 0;
-  const userAgentDataMobile = navigator.userAgentData?.mobile === true;
-  const isIPhone = /\biPhone\b/i.test(ua);
-  const isIPod = /\biPod\b/i.test(ua);
-  const isIPad = /\biPad\b/i.test(ua) || (platform === "MacIntel" && maxTouchPoints > 1);
-  const isAndroidHandheld = /\bAndroid\b/i.test(ua) && (/\bMobile\b/i.test(ua) || hasCoarsePointer);
-  return userAgentDataMobile || isIPhone || isIPod || isIPad || isAndroidHandheld;
-}
-
-function isLandscape() { return window.innerWidth >= window.innerHeight; }
-
-function updateOrientationGate() {
-  const shouldBlock = Boolean(rotateGate) && isHandheldDevice() && !isLandscape();
-  if (rotateGate) rotateGate.hidden = !shouldBlock;
-  document.body?.classList.toggle("orientation-blocked", shouldBlock);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -426,11 +400,7 @@ addSafe(chatSend, "touchend", (e) => { e.preventDefault(); sendChatMessage(); })
 addSafe(loaderError, "click", () => location.reload());
 addSafe(loaderError, "touchend", (e) => { e.preventDefault(); location.reload(); });
 
-// Orientation
-addSafe(window, "resize", updateOrientationGate);
-addSafe(window, "orientationchange", updateOrientationGate);
 addSafe(document, "visibilitychange", () => {
-  updateOrientationGate();
   if (!document.hidden && chatOpened && (!chatWs || chatWs.readyState !== WebSocket.OPEN)) {
     connectChat();
   }
@@ -442,5 +412,4 @@ addSafe(window, "beforeunload", () => {
 });
 
 // ── Init ────────────────────────────────────────────────────────────
-updateOrientationGate();
 startGame();

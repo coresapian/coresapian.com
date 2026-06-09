@@ -1,8 +1,8 @@
 # CoreSapian.com
 
-A 3D first-person lab experience built with Godot 4.6, deployed as a WebGL web app
-and iOS app (WKWebView wrapper). Features an Orange Phosphor CRT Terminal UI,
-real-time anonymous chat, and multiplayer temple exploration.
+A 3D first-person temple experience built with Godot 4.6, deployed as a WebGL web app.
+Features an Orange Phosphor CRT terminal UI, real-time anonymous chat, and multiplayer
+temple exploration with glowing orbs.
 
 ## Architecture
 
@@ -32,58 +32,54 @@ real-time anonymous chat, and multiplayer temple exploration.
 |---|---------|-------|------|-------------|---------|
 | 1 | Web Server | nginx | 80 | (system) | Static files + WebSocket proxy |
 | 2 | Anonymous Chat | Node.js + `ws` | 3001 | `coresapian-anonymous-chat.service` | Real-time anonymous WebSocket chat |
-| 3 | Health Check | Python 3 + cron | — | `coresapian-health-check.timer` | Status page monitoring |
+| 3 | Multiplayer Orbs | Node.js + `ws` | 8082 | `coresapian-mp.service` | Real-time player position relay |
+| 4 | Health Check | Python 3 + cron | — | `coresapian-health-check.timer` | Status page monitoring |
 
 ### nginx Routes
 
 | Path | Backend | Protocol | Purpose |
 |------|---------|----------|---------|
-| `/` | `/var/www/coresapian/` | HTTP | Static files |
-| `/game/` | `/var/www/coresapian/game/` | HTTP | Godot WebGL build |
+| `/` | `/var/www/coresapian/` | HTTP | Root landing (loads Godot game) |
+| `/game/` | `/var/www/coresapian/game/` | HTTP | Engine assets (wasm, pck, js) |
 | `/ws/chat` | `127.0.0.1:3001` | WebSocket | Anonymous chat |
+| `/ws/mp` | `127.0.0.1:8082` | WebSocket | Multiplayer orbs relay |
 
 ## Project Structure
 
 ```
 coresapian/
 ├── godot/                          # Godot 4.6 project source
-│   ├── project.godot               # Project config
+│   ├── project.godot               # Project config + autoloads
 │   ├── web_shell.html              # Custom HTML shell template
 │   ├── export_presets.cfg          # Web + iOS export presets
 │   ├── scenes/
-│   │   ├── lobby.gd/tscn           # Lobby / loading screen
-│   │   ├── main.gd/tscn            # Main entry point
-│   │   ├── core_truths/            # Player controller + world
+│   │   ├── main.gd/tscn            # Main entry point + fade overlay
+│   │   ├── player_orb.gd           # Remote player orb visualization
+│   │   ├── core_truths/            # Temple scene + player controller
 │   │   └── ui/
-│   │       └── settings_menu.gd    # Settings overlay
+│   │       └── settings_menu.gd    # In-game settings panel
 │   ├── autoloads/
-│   │   ├── network_manager.gd      # WebSocket multiplayer
-│   │   └── browser_overlay.gd      # iframe overlay bridge
-│   ├── shaders/                    # Glow, godrays, matrix rain
-│   └── resources/                  # 3D models, textures, fonts
+│   │   ├── network_manager.gd      # WebSocket multiplayer connection
+│   │   └── multiplayer_orbs.gd     # Remote player orb management
+│   └── resources/                  # 3D models, textures
 │
 ├── public/                         # Static web root
-│   ├── index.html                  # Root landing → game
+│   ├── index.html                  # Sole entry point → loads Godot game
 │   ├── game/                       # Godot WebGL build output
-│   │   ├── index.html              # Game shell HTML
 │   │   ├── index.js                # Godot engine JS
 │   │   ├── index.wasm              # Godot engine WASM
 │   │   ├── index.pck               # Game data pack
 │   │   ├── game-shell.js           # CRT loader + chat + UI
 │   │   ├── game-shell.css          # Orange Phosphor CRT theme
 │   │   └── index.audio.*.worklet.js
-│   ├── shared/
-│   │   └── browser-overlay.js      # iframe overlay controller
-│   ├── status/                     # Status dashboard
-│   ├── privacy/                    # Privacy policy
-│   ├── core_truths_book/           # Interactive lore book
-│   ├── rune_puzzle/                # Rune puzzle mini-game
-│   ├── explorer/                   # World explorer
 │   ├── robots.txt
 │   ├── 404.html
 │   └── favicon.ico
 │
 ├── server/                         # Backend services
+│   ├── mp_server.js                # Multiplayer orbs relay
+│   ├── mp_package.json             # npm manifest for mp_server
+│   ├── coresapian-mp.service       # systemd unit for mp_server
 │   ├── anonymous_chat_server.js    # Node.js WebSocket chat
 │   ├── package.json                # npm manifest (ws)
 │   ├── coresapian-anonymous-chat.service  # systemd unit
@@ -91,6 +87,7 @@ coresapian/
 │   └── nginx_coresapian.conf       # Canonical nginx config
 │
 ├── scripts/                        # Ops scripts
+│   ├── deploy.sh                   # Auto-versioning deploy (hashes + scp)
 │   ├── health-check.py             # Service status checker
 │   ├── coresapian-health-check.service
 │   ├── coresapian-health-check.timer
@@ -99,7 +96,9 @@ coresapian/
 │   ├── install_godot_export_templates.sh
 │   └── honeypot/                   # Fail2Ban + honeypot configs
 │
-└── .env.example                    # Environment template
+└── assets/
+    ├── audio/                      # Music + sound effects
+    └── images/                     # Branding assets
 ```
 
 ## Deployment
@@ -114,8 +113,8 @@ coresapian/
 # Export Godot WebGL build
 bash scripts/export_godot_web.sh
 
-# Deploy everything to LXC 103
-scp -r public/* root@192.168.0.148:/var/www/coresapian/
+# Deploy with auto-versioning (content hashes for cache busting)
+bash scripts/deploy.sh
 ```
 
 ### Chat Server Deploy
@@ -126,7 +125,7 @@ bash server/deploy_anonymous_chat.sh
 ### Verify
 ```bash
 # Web
-curl -I https://coresapian.com/game/
+curl -I https://coresapian.com/
 # Chat server
 systemctl status coresapian-anonymous-chat
 # WebSocket
@@ -163,6 +162,7 @@ Messages are broadcast to all connected clients. No authentication, no usernames
 - **Sensitive files**: nginx denies dotfiles, `.env`, `.sql`, `.bak`, `.key`, `.pem`
 - **Honeypot**: Canary paths tarpit attackers + Fail2Ban auto-ban
 - **Chat**: No auth, no PII, rate-limited, anonymous
+- **Servers bind localhost only**: nginx proxies external traffic
 - **No secrets in repo**: All credentials via `.env` (gitignored)
 
 ## License

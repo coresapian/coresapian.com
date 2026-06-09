@@ -22,40 +22,7 @@ volumetric_fog_emission_energy = 0.35
 volumetric_fog_gi_inject = 0.6
 
 [sub_resource type="BoxShape3D" id="3"]
-size = Vector3(180, 1, 180)
-
-[sub_resource type="SphereShape3D" id="4"]
-radius = 0.6
-
-[sub_resource type="StandardMaterial3D" id="5"]
-albedo_color = Color(0.08, 0.95, 0.9, 1)
-emission_enabled = true
-emission = Color(0.08, 0.95, 0.9, 1)
-emission_energy_multiplier = 1.4
-
-[sub_resource type="SphereMesh" id="6"]
-material = SubResource("5")
-radius = 0.25
-height = 0.5
-
-[sub_resource type="SphereShape3D" id="7"]
-radius = 0.9
-
-[sub_resource type="BoxMesh" id="8"]
-size = Vector3(1.0, 1.2, 0.3)
-
-[sub_resource type="StandardMaterial3D" id="9"]
-albedo_color = Color(0.08, 0.95, 0.9, 1)
-emission_enabled = true
-emission = Color(0.08, 0.95, 0.9, 1)
-emission_energy_multiplier = 0.8
-
-[sub_resource type="BoxMesh" id="10"]
-size = Vector3(0.5, 0.7, 0.35)
-
-[sub_resource type="StandardMaterial3D" id="11"]
-albedo_color = Color(0.18, 0.16, 0.13, 1)
-roughness = 0.8
+size = Vector3(200, 4, 200)
 
 [node name="CoreTruths" type="Node3D" unique_id=161350450]
 script = ExtResource("1")
@@ -72,15 +39,6 @@ shadow_enabled = true
 
 [node name="Temple" parent="." unique_id=357213418 instance=ExtResource("2")]
 transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
-
-[node name="GroundCollider" type="StaticBody3D" parent="." unique_id=792459812]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.11740711, 0)
-
-[node name="GroundColliderShape" type="CollisionShape3D" parent="GroundCollider" unique_id=468589958]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.6156386, 0)
-shape = SubResource("3")
-
-[node name="TabletRing" type="Node3D" parent="." unique_id=910000001]
 
 [node name="HazeSpotlightA" type="SpotLight3D" parent="." unique_id=910000002]
 transform = Transform3D(0.7071, -0.5, 0.5, 0, 0.7071, 0.7071, -0.7071, -0.5, 0.5, 8, 12, 8)
@@ -107,80 +65,9 @@ spot_angle = 45.0
 spawn_path = NodePath(".")
 spawnable_scenes = ["res://scenes/core_truths/player.tscn"]
 
-[node name="TempleInteraction" type="StaticBody3D" parent="." unique_id=393138370]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -2)
-metadata/interact_text = "Press E to inspect the altar"
-metadata/on_interact_message = "The temple hums with ancient energy."
+[node name="KillPlane" type="Area3D" parent="." unique_id=910000100]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -20, 0)
+monitoring = true
 
-[node name="TempleInteractionShape" type="CollisionShape3D" parent="TempleInteraction" unique_id=166481110]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.13740152, 0, -6.116516)
-shape = SubResource("4")
-
-[node name="AltarMarker" type="MeshInstance3D" parent="TempleInteraction" unique_id=24817943]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -7.3433533)
-mesh = SubResource("6")
-
-[node name="TempleLight" type="OmniLight3D" parent="TempleInteraction" unique_id=1331241785]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.22523057, 0.8008442)
-light_color = Color(0.50271374, 0.03892916, 0.4469964, 1)
-light_energy = 3.902
-omni_range = 1.305
-
-[node name="CodexPedestal" type="StaticBody3D" parent="." groups=["interactable"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 1.0, -3.5)
-metadata/interact_text = "Press E to read the Codex of Truths"
-metadata/browser_url = "/core_truths_book/"
-metadata/browser_title = "Core Truths"
-
-[node name="CodexShape" type="CollisionShape3D" parent="CodexPedestal"]
-shape = SubResource("7")
-
-[node name="CodexPedestalBase" type="MeshInstance3D" parent="CodexPedestal"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.6, 0)
-mesh = SubResource("10")
-material_override = SubResource("11")
-
-[node name="CodexCrystal" type="MeshInstance3D" parent="CodexPedestal"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
-mesh = SubResource("8")
-material_override = SubResource("9")
-
-[node name="CodexLabel" type="Label3D" parent="CodexPedestal"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
-text = "Codex"
-font_size = 28
-modulate = Color(0.08, 0.95, 0.9, 0.9)
-billboard = 1
-no_depth_test = true
-
-[node name="CodexGlow" type="OmniLight3D" parent="CodexPedestal"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
-light_color = Color(0.08, 0.95, 0.9, 1)
-light_energy = 1.2
-omni_range = 3.0
-
-[node name="RuneStone" type="StaticBody3D" parent="." groups=["interactable"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 1.0, -3.5)
-metadata/interact_text = "Press E to touch the Rune Stone"
-metadata/browser_url = "/rune_puzzle/"
-metadata/browser_title = "Rune Puzzle"
-
-[node name="RuneShape" type="CollisionShape3D" parent="RuneStone"]
-shape = SubResource("7")
-
-[node name="RunePedestal" type="MeshInstance3D" parent="RuneStone"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.6, 0)
-mesh = SubResource("10")
-material_override = SubResource("11")
-
-[node name="RuneLabel" type="Label3D" parent="RuneStone"]
-text = "ᚲᛟᚱᛖ"
-font_size = 48
-modulate = Color(0.0, 0.831, 1.0, 1.0)
-billboard = 1
-no_depth_test = true
-
-[node name="RuneGlow" type="OmniLight3D" parent="RuneStone"]
-light_color = Color(0.0, 0.831, 1.0, 1)
-light_energy = 1.4
-omni_range = 3.5
+[node name="KillPlaneShape" type="CollisionShape3D" parent="KillPlane"]
+shape = SubResource("3")

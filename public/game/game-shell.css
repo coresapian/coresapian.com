@@ -42,8 +42,6 @@ body {
   font-family: "Share Tech Mono", "Courier New", monospace;
 }
 
-body.orientation-blocked { overflow: hidden; }
-
 /* ── Shell layout ────────────────────────────────────────────────── */
 
 .shell {
@@ -492,67 +490,6 @@ body.orientation-blocked { overflow: hidden; }
 
 .chat-panel__send:active {
   background: var(--amber-faint);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   ROTATE GATE
-   ═══════════════════════════════════════════════════════════════════ */
-
-.rotate-gate {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 1.5rem;
-  background: rgba(5, 2, 0, 0.96);
-  z-index: 100;
-}
-
-.rotate-gate__card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.85rem;
-  text-align: center;
-  background: var(--bg);
-  width: min(32rem, calc(100vw - 3rem));
-  padding: 2rem 1.5rem;
-  border: 1px solid rgba(255, 140, 0, 0.3);
-  border-radius: 8px;
-  box-shadow:
-    0 0 24px rgba(255, 140, 0, 0.08),
-    0 4px 24px rgba(0, 0, 0, 0.5);
-}
-
-.rotate-gate__symbol {
-  font-size: 2.5rem;
-  color: var(--amber);
-  text-shadow: 0 0 12px var(--amber-glow);
-  animation: loader-symbol-pulse 3s ease-in-out infinite;
-}
-
-.rotate-gate__card .eyebrow {
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 0.7rem;
-  color: var(--amber-dim);
-}
-
-.rotate-gate__card h2 {
-  margin: 0;
-  font-family: "Cinzel", serif;
-  font-size: clamp(1rem, 3.5vw, 1.3rem);
-  font-weight: 700;
-  color: var(--amber-bright);
-  letter-spacing: 0.04em;
-}
-
-.rotate-gate__card p {
-  margin: 0;
-  color: var(--amber-dim);
-  line-height: 1.5;
-  font-size: clamp(0.85rem, 2.5vw, 0.95rem);
 }
 
 /* ═══════════════════════════════════════════════════════════════════

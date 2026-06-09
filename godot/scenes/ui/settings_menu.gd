@@ -31,7 +31,6 @@ func _ready() -> void:
 	sensitivity_slider.value_changed.connect(_on_sensitivity_changed)
 	fullscreen_check.toggled.connect(_on_fullscreen_toggled)
 
-
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed:
 		# F1 opens settings — works even with captured mouse.
@@ -43,10 +42,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_close()
 			get_viewport().set_input_as_handled()
 
-
 func is_open() -> bool:
 	return _is_open
-
 
 func open() -> void:
 	if _is_open:
@@ -57,7 +54,6 @@ func open() -> void:
 	# Pause player input processing so mouse movements don't rotate camera
 	_pause_player_input(true)
 
-
 func _close() -> void:
 	if not _is_open:
 		return
@@ -65,36 +61,21 @@ func _close() -> void:
 	visible = false
 	_save_settings()
 	settings_closed.emit()
-	# Re-capture mouse only if no other UI overlay is active
 	_pause_player_input(false)
-	if not _any_ui_open():
-		if not _should_defer_mouse_capture():
-			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-
+	if not _should_defer_mouse_capture():
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _on_dimmer_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		_close()
-
 
 func _pause_player_input(pause: bool) -> void:
 	var player := _get_local_player()
 	if player:
 		player.set_process_unhandled_input(not pause)
 
-
-func _any_ui_open() -> bool:
-	# Check browser overlay
-	if OS.has_feature("web"):
-		var js_result = JavaScriptBridge.eval("window.__coresapianIsBrowserOpen && window.__coresapianIsBrowserOpen()")
-		if js_result:
-			return true
-	return false
-
-
 func _should_defer_mouse_capture() -> bool:
 	return OS.has_feature("web")
-
 
 # ── Settings persistence ──────────────────────────────────────
 
@@ -117,7 +98,6 @@ func _load_settings() -> void:
 	fullscreen_check.button_pressed = config.get_value("display", "fullscreen", false)
 	_apply_settings()
 
-
 func _save_settings() -> void:
 	var config := ConfigFile.new()
 	config.set_value("audio", "master", master_vol.value)
@@ -127,7 +107,6 @@ func _save_settings() -> void:
 	config.set_value("display", "fullscreen", fullscreen_check.button_pressed)
 	config.save("user://settings.cfg")
 
-
 func _apply_settings() -> void:
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Master"), linear_to_db(master_vol.value))
 	_on_sensitivity_changed(sensitivity_slider.value)
@@ -136,22 +115,18 @@ func _apply_settings() -> void:
 	else:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 
-
 func _on_master_vol_changed(value: float) -> void:
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Master"), linear_to_db(value))
-
 
 func _on_music_vol_changed(value: float) -> void:
 	var bus_idx := AudioServer.get_bus_index("Music")
 	if bus_idx >= 0:
 		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(value))
 
-
 func _on_sfx_vol_changed(value: float) -> void:
 	var bus_idx := AudioServer.get_bus_index("SFX")
 	if bus_idx >= 0:
 		AudioServer.set_bus_volume_db(bus_idx, linear_to_db(value))
-
 
 func _on_sensitivity_changed(value: float) -> void:
 	sensitivity_label.text = "%.2f" % (value * 1000.0)
@@ -160,13 +135,11 @@ func _on_sensitivity_changed(value: float) -> void:
 	if player and player.has_method("set_mouse_sensitivity"):
 		player.set_mouse_sensitivity(value)
 
-
 func _on_fullscreen_toggled(pressed: bool) -> void:
 	if pressed:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	else:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
-
 
 func _get_local_player() -> CharacterBody3D:
 	# Walk the tree to find the PlayerSpawner node

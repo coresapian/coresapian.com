@@ -117,14 +117,17 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 func _setup_inventory_authority() -> void:
-	# Server owns all inventory state — clients request changes via RPC.
+	# Player input authority = this peer
+	var peer_id := multiplayer.get_unique_id()
+	set_multiplayer_authority(peer_id)
+	print("[Player] Set player input authority=%d" % peer_id)
+
+	# Server owns all inventory sync nodes — clients request changes via RPC.
 	# Node paths match the player.tscn hierarchy (no InventoryHandler wrapper):
 	#   CharacterInventorySystem/Inventory/SyncInventory
 	#   CharacterInventorySystem/EquipmentInventory/SyncInventory
 	#   CharacterInventorySystem/CraftStation/SyncCraftStation
 	#   CharacterInventorySystem/Hotbar/SyncHotbar
-	if not multiplayer or not multiplayer.is_server():
-		return
 	var sync_paths: Array[String] = [
 		"Inventory/SyncInventory",
 		"EquipmentInventory/SyncInventory",

@@ -157,6 +157,7 @@ func _ensure_input_map() -> void:
 	_bind_key("sprint", KEY_SHIFT)
 	_bind_key("toggle_inventory", KEY_TAB)
 	_bind_key("toggle_craft_panel", KEY_C)
+	_bind_key("interact", KEY_E)
 
 func _bind_key(action: StringName, keycode: Key) -> void:
 	if not InputMap.has_action(action):

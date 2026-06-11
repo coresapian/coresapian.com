@@ -10,20 +10,23 @@ func _ready() -> void:
 	hotbar.unequipped.connect(_on_unequipped_stack_changed)
 	hotbar.on_change_selection.connect(_on_change_selection)
 
+func _is_server() -> bool:
+	return multiplayer != null and multiplayer.is_server()
+
 func _on_equipped_stack_changed(slot_index: int):
-	if not multiplayer.is_server():
+	if not _is_server():
 		return
 	var stack = hotbar.get_stack_on_slot(slot_index)
 	var stack_index = hotbar.get_inventory().stacks.find(stack)
 	equipped_stack_changed_rpc.rpc(stack_index, slot_index)
 
 func _on_unequipped_stack_changed(slot_index: int):
-	if not multiplayer.is_server():
+	if not _is_server():
 		return
 	unequipped_stack_changed_rpc.rpc(slot_index)
 
 func _on_connected(peer_id: int):
-	if not multiplayer.is_server():
+	if not _is_server():
 		return
 	change_selection_rpc.rpc_id(peer_id, hotbar.selection_index)
 	for i in hotbar.max_slots:
@@ -34,7 +37,7 @@ func _on_connected(peer_id: int):
 		equipped_stack_changed_rpc.rpc_id(peer_id, stack_index, i)
 
 func _on_change_selection(selection_index: int):
-	if not multiplayer.is_server():
+	if not _is_server():
 		return
 	change_selection_rpc.rpc(selection_index)
 

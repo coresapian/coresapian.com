@@ -20,20 +20,23 @@ func setup():
 		inventory.updated_stack.connect(_on_updated_stack)
 		inventory.stack_removed.connect(_on_stack_removed)
 
+func _is_server() -> bool:
+	return multiplayer != null and multiplayer.is_server()
+
 func _on_contents_changed():
-	if not multiplayer.is_server():
+	if not _is_server():
 		return
 	var inv_data = inventory.serialize()
 	_update_inventory_rpc.rpc(inv_data)
 
 func _on_connected(id):
-	if not multiplayer.is_server():
+	if not _is_server():
 		return
 	var inv_data = inventory.serialize()
 	_update_inventory_rpc.rpc_id(id, inv_data)
 
 func _on_stack_added(stack_index: int):
-	if not multiplayer.is_server():
+	if not _is_server():
 		return
 	var item_id = inventory.stacks[stack_index].item_id
 	var amount = inventory.stacks[stack_index].amount
@@ -43,30 +46,30 @@ func _on_stack_added(stack_index: int):
 	_stack_added_rpc.rpc(stack_index, item_id, amount, properties, position, rotation)
 
 func _on_updated_stack(stack_index: int):
-	if not multiplayer.is_server():
+	if not _is_server():
 		return
 	_updated_slot_rpc.rpc(stack_index, inventory.stacks[stack_index].serialize())
 
 func _on_stack_removed(stack_index: int):
-	if not multiplayer.is_server():
+	if not _is_server():
 		return
 	_stack_removed_rpc.rpc(stack_index)
 
 @rpc
 func _update_inventory_rpc(inv_data: Dictionary):
-	if not multiplayer.is_server():
+	if not _is_server():
 		inventory.deserialize(inv_data)
 		inventory.contents_changed.emit()
 
 @rpc
 func _stack_added_rpc(_stack_index: int, item_id: String, amount: int, properties: Dictionary, position: Vector2i, rotation: bool):
-	if multiplayer.is_server():
+	if _is_server():
 		return
 	inventory.add_at_position(position, item_id, amount, properties, rotation)
 
 @rpc
 func _updated_slot_rpc(stack_index: int, slot_data: Array):
-	if multiplayer.is_server():
+	if _is_server():
 		return
 	var stack: ItemStack = inventory.stacks[stack_index]
 	stack.deserialize(slot_data)
@@ -74,6 +77,6 @@ func _updated_slot_rpc(stack_index: int, slot_data: Array):
 
 @rpc
 func _stack_removed_rpc(stack_index: int):
-	if multiplayer.is_server():
+	if _is_server():
 		return
 	inventory.remove_stack(stack_index)

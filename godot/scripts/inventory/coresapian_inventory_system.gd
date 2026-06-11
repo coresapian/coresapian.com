@@ -7,7 +7,7 @@ extends CharacterInventorySystem
 ## Server validates, mutates state, Sync* nodes broadcast changes.
 ## Follows the NetworkedCharacterInventorySystem pattern from the addon.
 
-const DROPPED_ITEM_3D_PATH := "res://addons/inventory-system-demos/fps/dropped_items/dropped_item.tscn"
+const DROPPED_ITEM_3D_PATH := "res://scenes/items/dropped_item.tscn"
 
 var _database: InventoryDatabase
 
@@ -236,25 +236,28 @@ func hotbar_next_item():
 func _on_request_drop_item(item: String, amount: int, properties: Dictionary):
 	if not multiplayer.is_server():
 		return
-	var def = _database.get_item(item)
-	if def == null:
-		return
-	var dropped_item_prop_name = "dropped_item"
-	if not def.properties.has(dropped_item_prop_name):
-		return
-	var dropped_item_path = def.properties[dropped_item_prop_name]
-	if dropped_item_path == null:
-		return
+	# Try to get the dropped item scene from the item definition, or use fallback
+	var dropped_item_path = DROPPED_ITEM_3D_PATH
+	var def = _database.get_item(item) if _database else null
+	if def != null and def.properties.has("dropped_item") and def.properties["dropped_item"] != null:
+		dropped_item_path = def.properties["dropped_item"]
 	var packed_scene: PackedScene = load(dropped_item_path)
 	if packed_scene == null:
+		push_warning("CoresapianInventorySystem: Could not load dropped item scene: %s" % dropped_item_path)
 		return
 	var node = packed_scene.instantiate()
+	# Place in the world (parent's parent = the scene root)
 	get_parent().get_parent().add_child(node)
 	node.set("item_id", item)
 	node.set("amount", amount)
 	node.set("item_properties", properties)
-	node.position = global_position
-	node.set("rotation", global_rotation)
+	# Drop in front of the player
+	var player = get_parent() as Node3D
+	if player:
+		node.global_position = player.global_position + (-player.global_basis.z * 1.5)
+		node.position.y += 0.5
+	else:
+		node.global_position = global_position
 
 
 # ── RPCs (server-side execution) ────────────────────────────

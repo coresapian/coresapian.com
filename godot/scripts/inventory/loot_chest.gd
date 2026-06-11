@@ -24,8 +24,13 @@ func get_interact_actions(_interactor) -> Array:
 
 
 func interact(character, _action_index):
-	var inv_system = character.get_node_or_null("CharacterInventorySystem")
-	if inv_system:
+	# The interactor passes the inventory system node, not the player
+	var inv_system: Node = character
+	if not inv_system is CoresapianInventorySystem:
+		inv_system = inv_system.get_node_or_null("../CharacterInventorySystem")
+		if inv_system == null:
+			inv_system = character.get_node_or_null("CharacterInventorySystem")
+	if inv_system and inv_system.has_method("open_inventory"):
 		if not is_opened:
 			is_opened = true
 			inv_system.open_inventory(inventory)

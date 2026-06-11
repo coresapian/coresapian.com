@@ -43,8 +43,16 @@ func get_interact_actions(_interactor) -> Array:
 
 
 func interact(character: Node, _action_index) -> void:
-	var inv_system = character.get_node_or_null("CharacterInventorySystem")
-	if inv_system:
+	# The interactor passes the inventory system node (node_base_to_interactions),
+	# not the player. If it's our CoresapianInventorySystem, use it directly.
+	var inv_system: Node = character
+	# If the interactor passed itself (a child of the inventory system), walk up
+	if not inv_system is CoresapianInventorySystem:
+		inv_system = inv_system.get_node_or_null("../CharacterInventorySystem")
+		if inv_system == null:
+			# Try: character might be the player node itself
+			inv_system = character.get_node_or_null("CharacterInventorySystem")
+	if inv_system and inv_system.has_method("pick_to_inventory"):
 		inv_system.pick_to_inventory(self)
 
 

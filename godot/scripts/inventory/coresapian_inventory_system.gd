@@ -19,35 +19,41 @@ func _ready():
 	# Load the item database
 	_database = load("res://resources/items/database.tres") as InventoryDatabase
 
-	# The base class _ready() connects mouse signals and activates hotbar slots 0-1.
-	# We need to override the mouse signal wiring and activate all 8 hotbar slots.
+	# Guard: don't run inventory setup on dedicated server (no camera, no input)
+	# and don't run if critical nodes are missing
+	if DisplayServer.get_name() == "":
+		# Headless server — skip all inventory UI/input setup
+		if main_inventory_path:
+			main_inventory = get_node_or_null(main_inventory_path)
+		if equipment_inventory_path:
+			equipment_inventory = get_node_or_null(equipment_inventory_path)
+		if hotbar_path:
+			hotbar = get_node_or_null(hotbar_path)
+		return
+
+	# The base class _ready() connects mouse signals and activates hotbar slots.
 	super._ready()
 
 	# Disconnect base class mouse-state connections so our _check_inputs override is used.
 	if change_mouse_state:
-		if opened_inventory.is_connected(_update_opened_inventories):
+		if opened_inventory and opened_inventory.is_connected(_update_opened_inventories):
 			opened_inventory.disconnect(_update_opened_inventories)
-		if closed_inventory.is_connected(_update_opened_inventories):
+		if closed_inventory and closed_inventory.is_connected(_update_opened_inventories):
 			closed_inventory.disconnect(_update_opened_inventories)
-		if opened_station.is_connected(_update_opened_stations):
+		if opened_station and opened_station.is_connected(_update_opened_stations):
 			opened_station.disconnect(_update_opened_stations)
-		if closed_station.is_connected(_update_opened_stations):
+		if closed_station and closed_station.is_connected(_update_opened_stations):
 			closed_station.disconnect(_update_opened_stations)
 
-	# Reconnect with our own _check_inputs override
+	# Reconnect signals only for the authority peer
 	if is_multiplayer_authority():
-		opened_inventory.connect(_update_opened_inventories)
-		closed_inventory.connect(_update_opened_inventories)
-		opened_station.connect(_update_opened_stations)
-		closed_station.connect(_update_opened_stations)
-		_update_opened_inventories(main_inventory)
+		if change_mouse_state:
+			opened_inventory.connect(_update_opened_inventories)
+			closed_inventory.connect(_update_opened_inventories)
+			opened_station.connect(_update_opened_stations)
+			closed_station.connect(_update_opened_stations)
 	else:
 		picked.connect(_on_picked)
-
-	# Activate all 8 hotbar slots (base only does 0-1)
-	if hotbar:
-		for i in range(8):
-			hotbar.active_slot(i)
 
 	# Wire drop signal to spawn DroppedItem3D scenes
 	if main_inventory:

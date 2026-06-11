@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://n5cbp5fj40f2"]
 
 [ext_resource type="Script" uid="uid://cml45fdjsayx3" path="res://scenes/main.gd" id="1"]
-[ext_resource type="PackedScene" uid="uid://c6wh1igc3iswb" path="res://scenes/core_truths/core_truths.tscn" id="2"]
+[ext_resource type="PackedScene" uid="uid://c6wh1igc3iswb" path="res://scenes/temple/temple.tscn" id="2"]
 [node name="Main" type="Node" unique_id=1389818398]
 script = ExtResource("1")
 

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c6wh1igc3iswb"]
 
-[ext_resource type="Script" uid="uid://dn71onwnib5tf" path="res://scenes/core_truths/core_truths.gd" id="1"]
+[ext_resource type="Script" uid="uid://dn71onwnib5tf" path="res://scenes/temple/temple.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://btdopdn4ank2j" path="res://resources/ancient_temple.glb" id="2"]
 
 [sub_resource type="Environment" id="1"]
@@ -24,7 +24,7 @@ volumetric_fog_gi_inject = 0.6
 [sub_resource type="BoxShape3D" id="3"]
 size = Vector3(200, 4, 200)
 
-[node name="CoreTruths" type="Node3D" unique_id=161350450]
+[node name="TempleScene" type="Node3D" unique_id=161350450]
 script = ExtResource("1")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1978765716]

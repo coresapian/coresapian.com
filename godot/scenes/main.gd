@@ -5,4 +5,4 @@ extends Node
 
 func _ready() -> void:
 	print("[Main] _ready — single player mode, no MP")
-	# Nothing else to do. core_truths.tscn handles everything.
+	# Nothing else to do. temple.tscn handles everything.

@@ -1,6 +1,7 @@
 extends Node3D
 
 const PLAYER_SCENE: PackedScene = preload("res://scenes/temple/player.tscn")
+const INVENTORY_UI_SCENE: PackedScene = preload("res://scenes/ui/inventory_ui.tscn")
 const SPAWN_POSITION := Vector3(0, 5, 7)
 const KILL_PLANE_Y := -20.0
 const SKY_PANORAMA_PATH := "res://resources/fantasy_sky_background_0.jpg"
@@ -23,12 +24,10 @@ func _ready() -> void:
 
 
 func _setup_sky() -> void:
-	# Hide the temple's built-in skybox mesh before anything else
 	var temple: Node = get_node_or_null("Temple")
 	if temple:
 		_hide_skybox_recursive(temple)
 
-	# Apply panorama sky via WorldEnvironment
 	var env_node: WorldEnvironment = get_node_or_null("WorldEnvironment")
 	if not env_node or not env_node.environment:
 		push_warning("[Temple] No WorldEnvironment found — skipping sky setup")
@@ -53,14 +52,13 @@ func _setup_sky() -> void:
 
 
 func _hide_skybox_recursive(node: Node) -> void:
-	if node is MeshInstance3D:
-		var name_lower: String = node.name.to_lower()
-		if "skybox" in name_lower or "sky_box" in name_lower or "sky" in name_lower:
-			# Only hide meshes that look like skybox spheres/cubes (not sky-related lights etc.)
-			var mesh_inst: MeshInstance3D = node
-			if mesh_inst.mesh and mesh_inst.mesh.get_aabb().size.length() > 50.0:
-				mesh_inst.visible = false
-				print("[Temple] Hidden temple skybox mesh: %s" % node.name)
+	var name_lower: String = node.name.to_lower()
+	if "skybox" in name_lower:
+		if node.get_child_count() == 1 and node.get_child(0) is MeshInstance3D:
+			var child_mesh: MeshInstance3D = node.get_child(0)
+			child_mesh.visible = false
+			print("[Temple] Hidden skybox via parent container: %s -> %s" % [node.name, child_mesh.name])
+			return
 	for child in node.get_children():
 		_hide_skybox_recursive(child)
 
@@ -77,7 +75,6 @@ func _generate_temple_collision() -> void:
 func _generate_collision_recursive(node: Node) -> void:
 	if node is MeshInstance3D:
 		var mesh_inst: MeshInstance3D = node
-		# Skip hidden meshes (skybox was hidden above)
 		if not mesh_inst.visible:
 			return
 		if mesh_inst.mesh:
@@ -110,6 +107,29 @@ func _spawn_local_player() -> void:
 	var spawn_pos := _find_floor_below(SPAWN_POSITION)
 	player.global_position = spawn_pos
 	print("[Temple] Local player spawned at %s" % spawn_pos)
+
+	# Setup inventory UI
+	_setup_inventory_ui(player)
+
+
+func _setup_inventory_ui(player: CharacterBody3D) -> void:
+	var inv_system: CoresapianInventorySystem = player.get_node_or_null("CharacterInventorySystem")
+	if not inv_system:
+		push_warning("[Temple] No CharacterInventorySystem found on player — skipping inventory UI")
+		return
+
+	# Add inventory UI to a CanvasLayer
+	var canvas := CanvasLayer.new()
+	canvas.name = "InventoryCanvas"
+	canvas.layer = 100
+	add_child(canvas)
+
+	var inv_ui := INVENTORY_UI_SCENE.instantiate()
+	canvas.add_child(inv_ui)
+
+	# Setup the UI with the player's inventory system
+	inv_ui.setup(inv_system)
+	print("[Temple] Inventory UI setup complete")
 
 
 func _find_floor_below(origin: Vector3) -> Vector3:

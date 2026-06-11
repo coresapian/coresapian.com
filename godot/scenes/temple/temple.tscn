@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dn71onwnib5tf" path="res://scenes/temple/temple.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://btdopdn4ank2j" path="res://resources/ancient_temple.glb" id="2"]
+[ext_resource type="PackedScene" uid="uid://dmr0fcamx7t56" path="res://addons/virtual_joystick/virtual_joystick_scene.tscn" id="3_joystick"]
 
 [sub_resource type="Environment" id="1"]
 background_mode = 1
@@ -45,3 +46,27 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -20, 0)
 
 [node name="KillPlaneShape" type="CollisionShape3D" parent="KillPlane" unique_id=1167815535]
 shape = SubResource("3")
+
+[node name="TouchUI" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="MoveJoystick" parent="TouchUI" instance=ExtResource("3_joystick")]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -260.0
+offset_right = 260.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
+joystick_mode = 1
+visibility_mode = 1
+use_input_actions = true
+action_left = "move_left"
+action_right = "move_right"
+action_up = "move_forward"
+action_down = "move_backward"

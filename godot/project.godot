@@ -3,7 +3,7 @@
 ; since the parameters that go here are not all obvious.
 ;
 ; Format:
-;   [section] ; section goes between []
+;   [section] ; section goes between [] brackets
 ;   param=value ; assign values to parameters
 
 config_version=5
@@ -38,6 +38,7 @@ touch_drag={
 [input_devices]
 
 pointing/emulate_touch_from_mouse=true
+pointing/emulate_mouse_from_touch=false
 
 [rendering]
 

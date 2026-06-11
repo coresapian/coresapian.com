@@ -36,6 +36,8 @@ func _ready() -> void:
 		if interactor_node:
 			interactor_node.raycast = interaction_ray
 			interactor_node.camera = camera
+		# Set server authority on all sync nodes
+		_setup_inventory_authority()
 		print("[Player] Inventory system wired up")
 
 	if _is_touchscreen:
@@ -113,6 +115,31 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0.0, speed)
 
 	move_and_slide()
+
+func _setup_inventory_authority() -> void:
+	# Server owns all inventory state — clients request changes via RPC.
+	# Node paths match the player.tscn hierarchy (no InventoryHandler wrapper):
+	#   CharacterInventorySystem/Inventory/SyncInventory
+	#   CharacterInventorySystem/EquipmentInventory/SyncInventory
+	#   CharacterInventorySystem/CraftStation/SyncCraftStation
+	#   CharacterInventorySystem/Hotbar/SyncHotbar
+	if not multiplayer or not multiplayer.is_server():
+		return
+	var sync_paths: Array[String] = [
+		"Inventory/SyncInventory",
+		"EquipmentInventory/SyncInventory",
+		"CraftStation/SyncCraftStation",
+		"Hotbar/SyncHotbar",
+	]
+	for sync_path in sync_paths:
+		var sync_node: Node = inventory_system.get_node_or_null(sync_path)
+		if sync_node:
+			sync_node.set_multiplayer_authority(1)
+			print("[Player] Set authority=1 on %s" % sync_path)
+		else:
+			push_warning("[Player] Sync node not found: %s" % sync_path)
+	# Also set authority on the inventory system itself
+	inventory_system.set_multiplayer_authority(1)
 
 func _ensure_input_map() -> void:
 	_bind_key("move_forward", KEY_W)

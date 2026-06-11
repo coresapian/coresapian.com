@@ -29,6 +29,10 @@ android.debug.x86_64 = "./android/libinventory_system.android.editor.x86_64.so"
 android.release.x86_64 = "./android/libinventory_system.android.template_release.x86_64.so"
 android.debug.arm64 = "./android/libinventory_system.android.editor.arm64.so"
 android.release.arm64 = "./android/libinventory_system.android.template_release.arm64.so"
+web.debug = "./web/libinventory_system.web.template_debug.wasm32.wasm"
+web.release = "./web/libinventory_system.web.template_release.wasm32.wasm"
+web.debug.double = "./web/libinventory_system.web.template_debug.double.wasm32.wasm"
+web.release.double = "./web/libinventory_system.web.template_release.double.wasm32.wasm"
 
 
 [icons]

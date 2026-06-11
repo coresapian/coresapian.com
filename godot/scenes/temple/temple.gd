@@ -6,6 +6,9 @@ const SPAWN_POSITION := Vector3(0, 5, 7)
 const KILL_PLANE_Y := -20.0
 const SKY_PANORAMA_PATH := "res://resources/fantasy_sky_background_0.jpg"
 
+## Track spawned players by peer ID
+var players: Dictionary = {}
+
 func _ready() -> void:
 	print("[Temple] _ready start")
 
@@ -19,8 +22,84 @@ func _ready() -> void:
 	_setup_sky()
 	_generate_temple_collision()
 	_connect_kill_plane()
-	_spawn_local_player()
-	print("[Temple] _ready done — everything set up")
+
+	# Multiplayer-aware player spawning
+	if NetworkManager.is_dedicated_server:
+		print("[Temple] Running as dedicated server — spawning on peer connect")
+	elif multiplayer.multiplayer_peer == null or multiplayer.multiplayer_peer is OfflineMultiplayerPeer:
+		# No network — spawn local player immediately
+		_spawn_local_player()
+	else:
+		# Multiplayer client — server will spawn our player via _on_peer_connected
+		# But we also need to handle the case where we connected and the server
+		# doesn't know to spawn us yet. Request spawn.
+		print("[Temple] Multiplayer client — my peer ID is %d" % multiplayer.get_unique_id())
+		if multiplayer.is_server():
+			# We're the server — spawn ourselves
+			_spawn_player(1)
+		# Client players get spawned when server's _on_peer_connected fires
+
+	# Connect multiplayer signals
+	multiplayer.peer_connected.connect(_on_peer_connected)
+	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
+
+	print("[Temple] _ready done")
+
+
+func _on_peer_connected(peer_id: int) -> void:
+	print("[Temple] Peer connected: %d" % peer_id)
+	if not multiplayer.is_server():
+		return
+	# Server spawns a player for every connecting peer
+	_spawn_player(peer_id)
+	# Also spawn the server's own player if this is the first connection
+	# (server peer is always 1)
+	if not players.has(1):
+		_spawn_player(1)
+
+
+func _on_peer_disconnected(peer_id: int) -> void:
+	print("[Temple] Peer disconnected: %d" % peer_id)
+	if players.has(peer_id):
+		var player: Node = players[peer_id]
+		player.queue_free()
+		players.erase(peer_id)
+
+
+func _spawn_player(peer_id: int) -> void:
+	if players.has(peer_id):
+		return
+
+	print("[Temple] Spawning player for peer %d" % peer_id)
+	var player := PLAYER_SCENE.instantiate()
+	player.name = str(peer_id)
+	player.set_multiplayer_authority(peer_id)
+	add_child(player)
+
+	# Find floor below spawn point
+	var spawn_pos := _find_floor_below(SPAWN_POSITION)
+	player.global_position = spawn_pos
+	print("[Temple] Player %d spawned at %s" % [peer_id, spawn_pos])
+
+	players[peer_id] = player
+
+	# Only setup inventory UI for the local player (this peer's player)
+	if peer_id == multiplayer.get_unique_id():
+		_setup_inventory_ui(player)
+
+
+func _spawn_local_player() -> void:
+	print("[Temple] Spawning local player (offline mode)...")
+	var player := PLAYER_SCENE.instantiate()
+	player.name = "LocalPlayer"
+	add_child(player)
+
+	var spawn_pos := _find_floor_below(SPAWN_POSITION)
+	player.global_position = spawn_pos
+	print("[Temple] Local player spawned at %s" % spawn_pos)
+
+	players[1] = player
+	_setup_inventory_ui(player)
 
 
 func _setup_sky() -> void:
@@ -95,21 +174,6 @@ func _on_kill_plane_body_entered(body: Node3D) -> void:
 		print("[Temple] Player fell into void — respawning.")
 		body.global_position = SPAWN_POSITION
 		body.velocity = Vector3.ZERO
-
-
-func _spawn_local_player() -> void:
-	print("[Temple] Spawning local player...")
-	var player := PLAYER_SCENE.instantiate()
-	player.name = "LocalPlayer"
-	add_child(player)
-
-	# Find floor below spawn point
-	var spawn_pos := _find_floor_below(SPAWN_POSITION)
-	player.global_position = spawn_pos
-	print("[Temple] Local player spawned at %s" % spawn_pos)
-
-	# Setup inventory UI
-	_setup_inventory_ui(player)
 
 
 func _setup_inventory_ui(player: CharacterBody3D) -> void:

@@ -43,12 +43,14 @@ func _ready() -> void:
 func join_game(host: String = DEFAULT_SERVER_IP, port: int = DEFAULT_PORT, name: String = "Player") -> void:
 	player_name = name
 
-	# Build WebSocket URL — TLS terminated by Cloudflare/nginx
+	# Build WebSocket URL — TLS terminated by Cloudflare/nginx.
+	# Uses /ws/godot path which proxies to the Godot dedicated server
+	# (not /ws/mp which goes to the Node.js orb relay).
 	var ws_url: String
 	if port != 0 and port != DEFAULT_PORT:
-		ws_url = "wss://%s:%d/ws/mp" % [host, port]
+		ws_url = "wss://%s:%d/ws/godot" % [host, port]
 	else:
-		ws_url = "wss://%s/ws/mp" % host
+		ws_url = "wss://%s/ws/godot" % host
 	print("Connecting via WebSocket: %s" % ws_url)
 	var ws_peer := WebSocketMultiplayerPeer.new()
 	var err := ws_peer.create_client(ws_url)

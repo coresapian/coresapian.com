@@ -28,6 +28,7 @@ const chatSend = document.getElementById("chat-send");
 const chatClose = document.getElementById("chat-close");
 const chatStatusDot = document.getElementById("chat-status-dot");
 const chatBadge = document.getElementById("chat-badge");
+const loaderVersion = document.getElementById("loader-version");
 const GODOT_CONFIG = window.__GODOT_CONFIG;
 const THREADS_ENABLED = false;
 const PROGRESS_STALL_TIMEOUT_MS = 120_000;
@@ -412,4 +413,9 @@ addSafe(window, "beforeunload", () => {
 });
 
 // ── Init ────────────────────────────────────────────────────────────
+// Show version stamp on loading screen
+if (loaderVersion) {
+  const v = loaderVersion.getAttribute("data-version") || "";
+  if (v) loaderVersion.textContent = v;
+}
 startGame();

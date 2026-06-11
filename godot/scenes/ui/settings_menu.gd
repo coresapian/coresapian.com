@@ -62,6 +62,8 @@ func _close() -> void:
 	_save_settings()
 	settings_closed.emit()
 	_pause_player_input(false)
+	# On web, the player's _input handler will capture on next click.
+	# On native, re-capture immediately.
 	if not _should_defer_mouse_capture():
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 

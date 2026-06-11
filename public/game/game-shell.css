@@ -225,6 +225,14 @@ body {
   min-height: 1.2em;
 }
 
+/* Version stamp */
+.loader__version {
+  font-size: clamp(0.55rem, 1.6vw, 0.7rem);
+  color: rgba(255, 140, 0, 0.18);
+  letter-spacing: 0.08em;
+  margin-top: 0.3rem;
+}
+
 /* Error state */
 #loader.is-error .loader__content { display: none; }
 #loader.is-error .loader__error { display: flex; }

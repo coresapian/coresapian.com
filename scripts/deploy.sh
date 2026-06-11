@@ -54,6 +54,9 @@ WASM_HASH=$(hash_file "$PROJECT_ROOT/public/game/index.wasm")
 PCK_SIZE=$(size_file "$PROJECT_ROOT/public/game/index.pck")
 WASM_SIZE=$(size_file "$PROJECT_ROOT/public/game/index.wasm")
 
+# Build version string: YYYYMMDD-HHMM (UTC) — changes every deploy
+BUILD_VERSION="v$(TZ=UTC date '+%Y%m%d-%H%M')"
+
 # The executable base name uses the WASM hash (engine loads ${executable}.wasm)
 # mainPack is set separately with the PCK hash (they have DIFFERENT content hashes)
 EXEC_ROOT="/game/index-${WASM_HASH}"
@@ -67,6 +70,7 @@ ok "PCK hash  → $PCK_HASH ($PCK_SIZE bytes)"
 ok "WASM hash → $WASM_HASH ($WASM_SIZE bytes)"
 ok "Exec (wasm) → $EXEC_ROOT"
 ok "MainPack    → $MAINPACK_ROOT"
+ok "Version     → $BUILD_VERSION"
 
 # ─── 2. Prepare staging directory ──────────────────────────────────
 STAGING="$PROJECT_ROOT/.deploy-staging"
@@ -113,8 +117,11 @@ with open(f, 'w') as fh: fh.write(txt)
 " "$file" "$exec_value" "$mainpack_value"
 
     # Replace fileSizes keys with correct hashed names and sizes
-    sed -i '' -E "s|\"[/a-zA-Z]*index[a-zA-Z0-9.-]*\\.wasm\":\s*[0-9]+|\"${exec_value}.wasm\":${WASM_SIZE}|g" "$file"
-    sed -i '' -E "s|\"[/a-zA-Z]*index[a-zA-Z0-9.-]*\\.pck\":\s*[0-9]+|\"${mainpack_value}\":${PCK_SIZE}|g" "$file"
+    sed -i '' -E "s|\"[/a-zA-Z]*index[a-zA-Z0-9.-]*\\.wasm\\\":\s*[0-9]+|\"${exec_value}.wasm\":${WASM_SIZE}|g" "$file"
+    sed -i '' -E "s|\"[/a-zA-Z]*index[a-zA-Z0-9.-]*\\.pck\\\":\s*[0-9]+|\"${mainpack_value}\":${PCK_SIZE}|g" "$file"
+
+    # Stamp the build version into the loader
+    sed -i '' "s|data-version=\"[^\"]*\"|data-version=\"${BUILD_VERSION}\"|g" "$file"
 
     # ── Verify patches actually applied ──
     local errors=0
@@ -236,8 +243,10 @@ for svc in nginx cloudflared coresapian-anonymous-chat coresapian-mp; do
     echo "    \$svc: \$status"
 done
 echo "  Executable in root HTML:"
-grep -o '"executable"[^,]*' /var/www/coresapian/index.html
-echo "  Hash versions in root HTML:"
+    grep -o '"executable"[^,]*' /var/www/coresapian/index.html
+    echo "  Build version:"
+    grep -o 'data-version="[^"]*"' /var/www/coresapian/index.html
+    echo "  Hash versions in root HTML:"
 grep -oE 'v=[a-f0-9]{8}' /var/www/coresapian/index.html | sort -u
 VERIFY
 

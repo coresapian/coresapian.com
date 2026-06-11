@@ -1,117 +1,21 @@
 [gd_scene format=3 uid="uid://br8mplayer001"]
 
 [ext_resource type="Script" uid="uid://bqovv1awxmgft" path="res://scenes/core_truths/player_controller.gd" id="ctrl"]
-[ext_resource type="PackedScene" path="res://scenes/ui/settings_menu.tscn" id="settings_scene"]
 
 [sub_resource type="CapsuleShape3D" id="capsule"]
-radius = 0.35
-height = 1.2
+radius = 0.2
+height = 0.7
 
 [node name="Player" type="CharacterBody3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6080936, 6.969077)
 script = ExtResource("ctrl")
 groups = ["player"]
 
 [node name="PlayerCollisionShape" type="CollisionShape3D" parent="."]
 shape = SubResource("capsule")
 
-[node name="PlayerLabel" type="Label3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
-text = "Player"
-font_size = 24
-modulate = Color(0.08, 0.95, 0.9, 0.9)
-outline_size = 4
-outline_modulate = Color(0, 0, 0, 0.6)
-visible = false
-billboard = 1
-
 [node name="Head" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
 
 [node name="Camera3D" type="Camera3D" parent="Head"]
 current = true
 near = 0.03
-
-[node name="HUD" type="CanvasLayer" parent="."]
-
-[node name="Crosshair" type="Label" parent="HUD"]
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -10.0
-offset_top = -14.0
-offset_right = 10.0
-offset_bottom = 14.0
-theme_override_colors/font_color = Color(1, 1, 1, 0.85)
-theme_override_font_sizes/font_size = 28
-text = "+"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="GearButton" type="Button" parent="HUD"]
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -56.0
-offset_top = 12.0
-offset_right = -12.0
-offset_bottom = 56.0
-grow_horizontal = 0
-theme_override_colors/font_color = Color(1, 1, 1, 0.75)
-theme_override_font_sizes/font_size = 28
-text = "⚙"
-tooltip_text = "Settings (F1)"
-
-[node name="SettingsMenu" parent="HUD" instance=ExtResource("settings_scene")]
-
-[node name="TouchControls" type="Control" parent="HUD"]
-visible = false
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-
-[node name="MovePad" type="ColorRect" parent="HUD/TouchControls"]
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 32.0
-offset_top = -272.0
-offset_right = 272.0
-offset_bottom = -32.0
-mouse_filter = 2
-color = Color(0.02, 0.08, 0.12, 0.22)
-
-[node name="MoveKnob" type="ColorRect" parent="HUD/TouchControls/MovePad"]
-offset_left = 72.0
-offset_top = 72.0
-offset_right = 168.0
-offset_bottom = 168.0
-mouse_filter = 2
-color = Color(0.08, 0.95, 0.9, 0.65)
-
-[node name="LookPad" type="ColorRect" parent="HUD/TouchControls"]
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -420.0
-offset_top = -424.0
-offset_right = -24.0
-offset_bottom = -32.0
-mouse_filter = 2
-color = Color(0.02, 0.08, 0.12, 0.12)
-
-[node name="JumpButton" type="Button" parent="HUD/TouchControls"]
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -232.0
-offset_top = -144.0
-offset_right = -24.0
-offset_bottom = -64.0
-theme_override_colors/font_color = Color(0.9, 1, 0.98, 1)
-theme_override_font_sizes/font_size = 24
-text = "Jump"

@@ -20,6 +20,15 @@ func _ready() -> void:
 			print("[Temple] Disabled volumetric fog for web")
 
 	_setup_sky()
+
+	# Spawn test loot chest
+	var chest_scene = preload("res://scenes/items/loot_chest.tscn")
+	var chest = chest_scene.instantiate()
+	var chest_pos = _find_floor_below(Vector3(3, 5, 0))
+	chest.position = chest_pos
+	add_child(chest)
+	print("[Temple] Loot chest spawned at %s" % chest_pos)
+
 	_generate_temple_collision()
 	_connect_kill_plane()
 

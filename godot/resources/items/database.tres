@@ -36,8 +36,6 @@ id = "quest"
 name = "Quest Item"
 color = Color(1, 1, 0.501961, 1)
 
-# ── Consumables ─────────────────────────────────────────────
-
 [sub_resource type="ItemDefinition" id="ItemDefinition_health_potion"]
 id = "health_potion"
 max_stack = 20
@@ -74,8 +72,6 @@ properties = {
 }
 categories = Array[ItemCategory]([SubResource("ItemCategory_consumable")])
 description = "Restores 10 HP over time."
-
-# ── Equipment ───────────────────────────────────────────────
 
 [sub_resource type="ItemDefinition" id="ItemDefinition_iron_sword"]
 id = "iron_sword"
@@ -141,8 +137,6 @@ properties = {
 categories = Array[ItemCategory]([SubResource("ItemCategory_armor")])
 description = "A leather chestpiece. 5 defense."
 
-# ── Materials ───────────────────────────────────────────────
-
 [sub_resource type="ItemDefinition" id="ItemDefinition_iron_ore"]
 id = "iron_ore"
 max_stack = 100
@@ -176,131 +170,6 @@ properties = {
 categories = Array[ItemCategory]([SubResource("ItemCategory_material")])
 description = "Woven cloth. Used for tailoring."
 
-# ── Recipes ─────────────────────────────────────────────────
-
-[sub_resource type="CraftStationType" id="CraftStationType_workbench"]
-id = "workbench"
-name = "Workbench"
-
-[sub_resource type="ItemStack" id="ItemStack_iron_sword_prod"]
-item_id = "iron_sword"
-amount = 1
-
-[sub_resource type="ItemStack" id="ItemStack_iron_ore_ing"]
-item_id = "iron_ore"
-amount = 3
-
-[sub_resource type="ItemStack" id="ItemStack_wood_ing"]
-item_id = "wood"
-amount = 1
-
-[sub_resource type="Recipe" id="Recipe_iron_sword"]
-products = Array[ItemStack]([SubResource("ItemStack_iron_sword_prod")])
-time_to_craft = 8.0
-station = SubResource("CraftStationType_workbench")
-ingredients = Array[ItemStack]([SubResource("ItemStack_iron_ore_ing"), SubResource("ItemStack_wood_ing")])
-
-[sub_resource type="ItemStack" id="ItemStack_leather_helmet_prod"]
-item_id = "leather_helmet"
-amount = 1
-
-[sub_resource type="ItemStack" id="ItemStack_cloth_ing2"]
-item_id = "cloth"
-amount = 3
-
-[sub_resource type="ItemStack" id="ItemStack_iron_ore_ing2"]
-item_id = "iron_ore"
-amount = 1
-
-[sub_resource type="Recipe" id="Recipe_leather_helmet"]
-products = Array[ItemStack]([SubResource("ItemStack_leather_helmet_prod")])
-time_to_craft = 6.0
-station = SubResource("CraftStationType_workbench")
-ingredients = Array[ItemStack]([SubResource("ItemStack_cloth_ing2"), SubResource("ItemStack_iron_ore_ing2")])
-
-[sub_resource type="ItemStack" id="ItemStack_leather_chest_prod"]
-item_id = "leather_chest"
-amount = 1
-
-[sub_resource type="ItemStack" id="ItemStack_cloth_ing3"]
-item_id = "cloth"
-amount = 5
-
-[sub_resource type="ItemStack" id="ItemStack_iron_ore_ing3"]
-item_id = "iron_ore"
-amount = 2
-
-[sub_resource type="Recipe" id="Recipe_leather_chest"]
-products = Array[ItemStack]([SubResource("ItemStack_leather_chest_prod")])
-time_to_craft = 10.0
-station = SubResource("CraftStationType_workbench")
-ingredients = Array[ItemStack]([SubResource("ItemStack_cloth_ing3"), SubResource("ItemStack_iron_ore_ing3")])
-
-[sub_resource type="ItemStack" id="ItemStack_wooden_shield_prod"]
-item_id = "wooden_shield"
-amount = 1
-
-[sub_resource type="ItemStack" id="ItemStack_wood_ing4"]
-item_id = "wood"
-amount = 4
-
-[sub_resource type="ItemStack" id="ItemStack_iron_ore_ing4"]
-item_id = "iron_ore"
-amount = 1
-
-[sub_resource type="Recipe" id="Recipe_wooden_shield"]
-products = Array[ItemStack]([SubResource("ItemStack_wooden_shield_prod")])
-time_to_craft = 6.0
-station = SubResource("CraftStationType_workbench")
-ingredients = Array[ItemStack]([SubResource("ItemStack_wood_ing4"), SubResource("ItemStack_iron_ore_ing4")])
-
-[sub_resource type="ItemStack" id="ItemStack_health_potion_prod"]
-item_id = "health_potion"
-amount = 2
-
-[sub_resource type="ItemStack" id="ItemStack_cloth_ing5"]
-item_id = "cloth"
-amount = 1
-
-[sub_resource type="Recipe" id="Recipe_health_potion"]
-products = Array[ItemStack]([SubResource("ItemStack_health_potion_prod")])
-time_to_craft = 3.0
-ingredients = Array[ItemStack]([SubResource("ItemStack_cloth_ing5")])
-
-# ── Loot Tables ─────────────────────────────────────────────
-
-[sub_resource type="LootItem" id="LootItem_wood"]
-item_id = "wood"
-weight = 0.8
-max_amount = 6
-
-[sub_resource type="LootItem" id="LootItem_iron_ore"]
-item_id = "iron_ore"
-weight = 0.5
-max_amount = 4
-
-[sub_resource type="LootItem" id="LootItem_cloth"]
-item_id = "cloth"
-weight = 0.4
-max_amount = 3
-
-[sub_resource type="LootItem" id="LootItem_health_potion"]
-item_id = "health_potion"
-weight = 0.2
-max_amount = 2
-
-[sub_resource type="LootItem" id="LootItem_iron_sword"]
-item_id = "iron_sword"
-weight = 0.05
-
-[sub_resource type="Loot" id="Loot_general"]
-items = Array[LootItem]([SubResource("LootItem_wood"), SubResource("LootItem_iron_ore"), SubResource("LootItem_cloth"), SubResource("LootItem_health_potion"), SubResource("LootItem_iron_sword")])
-id = "general"
-name = "General Loot"
-
 [resource]
 items = Array[ItemDefinition]([SubResource("ItemDefinition_health_potion"), SubResource("ItemDefinition_mana_potion"), SubResource("ItemDefinition_bread"), SubResource("ItemDefinition_iron_sword"), SubResource("ItemDefinition_wooden_shield"), SubResource("ItemDefinition_leather_helmet"), SubResource("ItemDefinition_leather_chest"), SubResource("ItemDefinition_iron_ore"), SubResource("ItemDefinition_wood"), SubResource("ItemDefinition_cloth")])
-recipes = Array[Recipe]([SubResource("Recipe_iron_sword"), SubResource("Recipe_leather_helmet"), SubResource("Recipe_leather_chest"), SubResource("Recipe_wooden_shield"), SubResource("Recipe_health_potion")])
-stations_type = Array[CraftStationType]([SubResource("CraftStationType_workbench")])
 item_categories = Array[ItemCategory]([SubResource("ItemCategory_consumable"), SubResource("ItemCategory_weapon"), SubResource("ItemCategory_armor"), SubResource("ItemCategory_material"), SubResource("ItemCategory_quest")])
-loots = Array[Loot]([SubResource("Loot_general")])

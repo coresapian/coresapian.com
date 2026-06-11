@@ -176,6 +176,18 @@ log "Deploying hashed engine assets..."
 scp -q "$PROJECT_ROOT/public/game/index.pck"  "$REMOTE:$REMOTE_ROOT/game/index.pck"
 scp -q "$PROJECT_ROOT/public/game/index.wasm" "$REMOTE:$REMOTE_ROOT/game/index.wasm"
 
+# Upload threaded web worker (needed for GDExtension support)
+if [[ -f "$PROJECT_ROOT/public/game/index.side.wasm" ]]; then
+    scp -q "$PROJECT_ROOT/public/game/index.side.wasm" "$REMOTE:$REMOTE_ROOT/game/index.side.wasm"
+fi
+
+# Upload GDExtension wasm binaries
+for ext_wasm in "$PROJECT_ROOT/public/game/"lib*.web.*.wasm; do
+    if [[ -f "$ext_wasm" ]]; then
+        scp -q "$ext_wasm" "$REMOTE:$REMOTE_ROOT/game/$(basename "$ext_wasm")"
+    fi
+done
+
 # Upload audio worklet files (Godot loads these as ${executable}.audio.worklet.js etc.)
 scp -q "$PROJECT_ROOT/public/game/index.audio.position.worklet.js" \
     "$REMOTE:$REMOTE_ROOT/game/index.audio.position.worklet.js"
@@ -194,6 +206,11 @@ cp index.wasm "index-${WASM_HASH}.wasm"
 # Copy worklet files with hashed prefix (Godot constructs URLs like index-HASH.audio.worklet.js)
 cp index.audio.position.worklet.js "index-${WASM_HASH}.audio.position.worklet.js"
 cp index.audio.worklet.js          "index-${WASM_HASH}.audio.worklet.js"
+
+# Copy side.wasm with hashed prefix (threaded worker — Godot constructs ${executable}.side.wasm)
+if [ -f index.side.wasm ]; then
+    cp index.side.wasm "index-${WASM_HASH}.side.wasm"
+fi
 
 # Clean up old hashed files (keep current + base only)
 for f in index-*.pck; do

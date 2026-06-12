@@ -219,6 +219,9 @@ for f in index-*.pck; do
 done
 for f in index-*.wasm; do
     [ "\$f" = "index-${WASM_HASH}.wasm" ] && continue
+    [ "\$f" = "index-${WASM_HASH}.side.wasm" ] && continue
+    case "\$f" in *.side.wasm) continue ;; esac
+    case "\$f" in lib*.wasm) continue ;; esac
     rm -f "\$f"
 done
 for f in index-*.audio.position.worklet.js; do

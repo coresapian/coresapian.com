@@ -1,19 +1,16 @@
-extends Node3D
+extends StaticBody3D
 
-## Loot chest with its own GridInventory that can be opened by the player.
+## Loot chest with its own GridInventory. Opens on interact.
 
 @export var is_opened: bool = false
 var inventory: GridInventory
 
-
 func _ready():
 	inventory = $Inventory
-	# Add test items directly (LootGenerator requires editor-only resources)
 	if inventory:
 		inventory.add("health_potion", 3)
 		inventory.add("iron_ore", 5)
 		inventory.add("bread", 2)
-
 
 func get_interact_actions(_interactor) -> Array:
 	var action = InteractAction.new()
@@ -22,18 +19,12 @@ func get_interact_actions(_interactor) -> Array:
 	action.description = "Open Chest" if not is_opened else "Close Chest"
 	return [action]
 
-
-func interact(character, _action_index):
-	# The interactor passes the inventory system node, not the player
-	var inv_system: Node = character
-	if not inv_system is CoresapianInventorySystem:
-		inv_system = inv_system.get_node_or_null("../CharacterInventorySystem")
-		if inv_system == null:
-			inv_system = character.get_node_or_null("CharacterInventorySystem")
-	if inv_system and inv_system.has_method("open_inventory"):
-		if not is_opened:
-			is_opened = true
-			inv_system.open_inventory(inventory)
-		else:
-			is_opened = false
-			inv_system.remove_open_inventory(inventory)
+func interact(character: Node, _action_index):
+	if not character or not character.has_method("open_inventory"):
+		return
+	if not is_opened:
+		is_opened = true
+		character.open_inventory(inventory)
+	else:
+		is_opened = false
+		character.remove_open_inventory(inventory)

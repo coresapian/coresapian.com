@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/inventory/loot_chest.gd" id="1_script"]
-[ext_resource type="Script" path="res://addons/inventory-system-demos/mp/sync_grid_inventory.gd" id="2_sync"]
+[ext_resource type="Script" path="res://scripts/inventory/sync_grid_inventory.gd" id="2_sync"]
 
 [sub_resource type="BoxMesh" id="BoxMesh"]
 size = Vector3(0.8, 0.6, 0.5)
@@ -9,7 +9,7 @@ size = Vector3(0.8, 0.6, 0.5)
 [sub_resource type="BoxShape3D" id="BoxShape3D"]
 size = Vector3(1.0, 0.8, 0.7)
 
-[node name="LootChest" type="Node3D"]
+[node name="LootChest" type="StaticBody3D"]
 script = ExtResource("1_script")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]

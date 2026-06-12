@@ -144,10 +144,8 @@ func _on_fullscreen_toggled(pressed: bool) -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 
 func _get_local_player() -> CharacterBody3D:
-	# Walk the tree to find the PlayerSpawner node
-	var spawner := get_tree().root.find_child("PlayerSpawner", true, false) as MultiplayerSpawner
-	if spawner:
-		for child in spawner.get_children():
-			if child is CharacterBody3D and child.is_multiplayer_authority():
-				return child as CharacterBody3D
+	var nodes := get_tree().get_nodes_in_group("player")
+	for n in nodes:
+		if n is CharacterBody3D and n.is_multiplayer_authority():
+			return n as CharacterBody3D
 	return null

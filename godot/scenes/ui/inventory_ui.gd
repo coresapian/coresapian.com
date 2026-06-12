@@ -1,122 +1,170 @@
 extends Control
 
-## Coresapian Inventory UI — manages visibility, drag-drop, and inventory state.
-## Uses ExpressoBits demo UI scenes as sub-components.
+## Coresapian Inventory UI — visibility, drag-drop, context menus.
+## Bridges ExpressoBits demo UI panels to CoresapianInventorySystem.
 
 signal inventory_opened
 signal inventory_closed
 
-var _inventory_system: CoresapianInventorySystem = null
+var _inv: CoresapianInventorySystem = null
 var _is_open: bool = false
+var _alt_inventory: Inventory = null
 
-@onready var _player_inventory_panel: Control = %PlayerGridInventoryUI
-@onready var _loot_inventory_panel: Control = %LootGridInventoryUI
-@onready var _player_craft_station_ui: Control = %PlayerCraftStationUI
-@onready var _other_craft_station_ui: Control = %OtherCraftStationUI
-@onready var _hotbar_ui: Control = $HotbarUI
+@onready var _player_panel: Control = %PlayerGridInventoryUI
+@onready var _loot_panel: Control = %LootGridInventoryUI
+@onready var _player_craft: Control = %PlayerCraftStationUI
+@onready var _other_craft: Control = %OtherCraftStationUI
+@onready var _hotbar: Control = $HotbarUI
 @onready var _drop_area: Control = $DropArea
+@onready var _popup: PopupMenu = $StackPopupMenu
 
-var _alternative_inventory: Inventory = null
+# Context state
+var _ctx_stack: ItemStack = null
+var _ctx_inv: GridInventory = null
 
 func _ready() -> void:
 	visible = false
-	_player_inventory_panel.visible = false
-	_loot_inventory_panel.visible = false
+	_player_panel.visible = false
+	_loot_panel.visible = false
 	if _drop_area:
 		_drop_area.visible = false
+	if _player_craft:
+		_player_craft.close()
+	if _other_craft:
+		_other_craft.close()
+
+	# Wire panel signals
+	for panel in [_player_panel, _loot_panel]:
+		if not panel: continue
+		panel.request_transfer_to.connect(_on_transfer_to)
+		panel.request_fast_transfer.connect(_on_fast_transfer)
+		panel.request_split.connect(_on_split)
+		panel.inventory_stack_context_activated.connect(_on_context)
+
+	# Wire drop area
+	if _drop_area:
+		_drop_area.request_drop.connect(func(stack, inv): _inv.drop(stack, inv) if _inv else null)
+
+	# Wire craft UIs
+	for cui in [_player_craft, _other_craft]:
+		if cui:
+			cui.on_craft.connect(_on_craft)
+
+	# Wire popup
+	if _popup:
+		_popup.id_pressed.connect(_on_popup_id)
 
 func setup(inventory_system: CoresapianInventorySystem) -> void:
-	_inventory_system = inventory_system
-	
-	# Wire opened/closed signals
-	_inventory_system.opened_inventory.connect(_on_open_inventory)
-	_inventory_system.closed_inventory.connect(_on_close_inventory)
-	_inventory_system.opened_station.connect(_on_open_craft_station)
-	_inventory_system.closed_station.connect(_on_close_craft_station)
-	
-	# Set the player inventory on the UI panel
-	if _player_inventory_panel:
-		_player_inventory_panel.inventory = inventory_system.main_inventory
-	
-	# Setup hotbar
-	if _hotbar_ui and _hotbar_ui.has_method("set_hotbar"):
-		_hotbar_ui.set_hotbar(inventory_system.hotbar)
-	
-	print("[InventoryUI] Setup complete")
+	_inv = inventory_system
+	_inv.opened_inventory.connect(_on_open_inventory)
+	_inv.closed_inventory.connect(_on_close_inventory)
+	_inv.opened_station.connect(_on_open_station)
+	_inv.closed_station.connect(_on_close_station)
+	if _player_panel:
+		_player_panel.inventory = inventory_system.main_inventory
+	if _hotbar and _hotbar.has_method("set_hotbar"):
+		_hotbar.set_hotbar(inventory_system.hotbar)
 
 func toggle() -> void:
-	if _is_open:
-		close()
-	else:
-		open()
+	close() if _is_open else open()
 
 func open() -> void:
-	if _is_open or _inventory_system == null:
-		return
+	if _is_open or not _inv: return
 	_is_open = true
-	_inventory_system.open_main_inventory()
+	_inv.open_main_inventory()
 	inventory_opened.emit()
 
 func close() -> void:
-	if not _is_open:
-		return
+	if not _is_open: return
 	_is_open = false
-	_inventory_system.close_inventories()
-	_inventory_system.close_craft_stations()
+	_inv.close_inventories()
+	_inv.close_craft_stations()
 	inventory_closed.emit()
 
-func is_open() -> bool:
-	return _is_open
+# ── Open / Close handlers ────────────────────────────────────
 
 func _on_open_inventory(inventory: Inventory) -> void:
-	if _inventory_system.main_inventory != inventory:
-		if _loot_inventory_panel:
-			_loot_inventory_panel.inventory = inventory
-			_loot_inventory_panel.visible = true
-			_alternative_inventory = inventory
+	if _inv.main_inventory == inventory:
+		# Main inventory opened — just show the player panel
+		_show_player_ui(true)
 	else:
-		if _player_inventory_panel:
-			_player_inventory_panel.visible = true
-		if _drop_area:
-			_drop_area.visible = true
-		if _hotbar_ui:
-			_hotbar_ui.visible = false
+		# External inventory (loot chest, etc.)
+		_loot_panel.inventory = inventory
+		_loot_panel.visible = true
+		_alt_inventory = inventory
+		_show_player_ui(true)
 
-func _on_close_inventory(inventory: Inventory) -> void:
-	if _inventory_system.main_inventory != inventory:
-		_alternative_inventory = null
-	_close_player_inventory()
+func _on_close_inventory(_inventory: Inventory) -> void:
+	_alt_inventory = null
+	_show_player_ui(false)
 
-func _close_player_inventory() -> void:
-	if _player_inventory_panel:
-		_player_inventory_panel.visible = false
-	if _loot_inventory_panel:
-		_loot_inventory_panel.visible = false
-	if _drop_area:
-		_drop_area.visible = false
-	if _hotbar_ui:
-		_hotbar_ui.visible = true
-
-func _on_open_craft_station(craft_station: CraftStation) -> void:
-	if craft_station == _inventory_system.main_station:
-		if _player_craft_station_ui:
-			_player_craft_station_ui.open(craft_station)
+func _on_open_station(station: CraftStation) -> void:
+	if station == _inv.main_station:
+		_player_craft.open(station) if _player_craft else null
 	else:
-		if _other_craft_station_ui:
-			_other_craft_station_ui.open(craft_station)
-	if _player_inventory_panel:
-		_player_inventory_panel.visible = true
-	if _hotbar_ui:
-		_hotbar_ui.visible = false
+		_other_craft.open(station) if _other_craft else null
+	_show_player_ui(true)
 
-func _on_close_craft_station(craft_station: CraftStation) -> void:
-	if craft_station == _inventory_system.main_station:
-		if _player_craft_station_ui:
-			_player_craft_station_ui.close()
+func _on_close_station(station: CraftStation) -> void:
+	if station == _inv.main_station:
+		_player_craft.close() if _player_craft else null
 	else:
-		if _other_craft_station_ui:
-			_other_craft_station_ui.close()
-		_alternative_inventory = null
-	if _hotbar_ui:
-		_hotbar_ui.visible = true
-	_close_player_inventory()
+		_other_craft.close() if _other_craft else null
+		_alt_inventory = null
+	_show_player_ui(false)
+
+func _show_player_ui(show: bool) -> void:
+	_player_panel.visible = show
+	if _drop_area: _drop_area.visible = show
+	if _hotbar: _hotbar.visible = not show
+	if not show:
+		_loot_panel.visible = false
+
+# ── Drag-drop / transfer handlers ────────────────────────────
+
+func _on_transfer_to(src: GridInventory, src_pos: Vector2i, dst: GridInventory, dst_pos: Vector2i, amt: int, rotated: bool) -> void:
+	if _inv: _inv.transfer_to(src, src_pos, dst, dst_pos, amt, rotated)
+
+func _on_fast_transfer(src: GridInventory, src_pos: Vector2i, amt: int) -> void:
+	if not _inv: return
+	var dst: Inventory = _alt_inventory if src == _player_panel.inventory else _player_panel.inventory
+	if dst: _inv.transfer(src, src_pos, dst, amt)
+
+func _on_split(inventory: Inventory, idx: int, amt: int) -> void:
+	if _inv: _inv.split(inventory, idx, amt)
+
+func _on_craft(station: CraftStation, recipe: int) -> void:
+	if _inv: _inv.craft(station, recipe)
+
+# ── Context menu (right-click) ───────────────────────────────
+
+func _on_context(event: InputEvent, inventory: GridInventory, stack: ItemStack) -> void:
+	if not (event is InputEventMouseButton): return
+	var mb := event as InputEventMouseButton
+	if not _popup: return
+
+	_ctx_stack = stack
+	_ctx_inv = inventory
+
+	_popup.clear()
+	_popup.add_item("Split", 0)
+	_popup.add_item("Rotate", 1)
+	_popup.add_item("Drop", 2)
+	_popup.add_separator()
+	_popup.add_item("Sort", 3)
+	_popup.set_item_disabled(0, stack.amount == 1)
+	_popup.position = mb.global_position
+	_popup.popup()
+
+func _on_popup_id(id: int) -> void:
+	if not _ctx_stack or not _ctx_inv or not _inv: return
+	match id:
+		0: # Split
+			var idx = _ctx_inv.stacks.find(_ctx_stack)
+			if idx != -1: _inv.split(_ctx_inv, idx, int(_ctx_stack.amount / 2.0))
+		1: # Rotate
+			_inv.rotate(_ctx_stack, _ctx_inv)
+		2: # Drop
+			_inv.drop(_ctx_stack, _ctx_inv)
+		3: # Sort
+			_inv.sort(_ctx_inv)

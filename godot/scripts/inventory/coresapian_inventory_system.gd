@@ -2,81 +2,46 @@
 class_name CoresapianInventorySystem
 extends CharacterInventorySystem
 
-## Server-authoritative inventory system for Coresapian.
-## Clients send action requests via @rpc("any_peer") to the server.
-## Server validates, mutates state, Sync* nodes broadcast changes.
-## Follows the NetworkedCharacterInventorySystem pattern from the addon.
+## Server-authoritative inventory for Coresapian.
+## Clients request actions via RPC; server validates and mutates.
+## Sync* nodes broadcast state changes.
 
 const DROPPED_ITEM_3D_PATH := "res://scenes/items/dropped_item.tscn"
 
 var _database: InventoryDatabase
 
-
 func _ready():
 	if Engine.is_editor_hint():
 		return
 
-	# Load the item database
 	_database = load("res://resources/items/database.tres") as InventoryDatabase
 
-	# Guard: don't run inventory setup on dedicated server (no camera, no input)
-	# and don't run if critical nodes are missing
+	# Headless server: init node refs + hotbar slots, skip UI/input signals
 	if DisplayServer.get_name() == "":
-		# Headless server — skip all inventory UI/input setup
-		if main_inventory_path:
-			main_inventory = get_node_or_null(main_inventory_path)
-		if equipment_inventory_path:
-			equipment_inventory = get_node_or_null(equipment_inventory_path)
-		if hotbar_path:
-			hotbar = get_node_or_null(hotbar_path)
+		main_inventory = get_node_or_null(main_inventory_path)
+		equipment_inventory = get_node_or_null(equipment_inventory_path)
+		hotbar = get_node_or_null(hotbar_path)
+		_activate_hotbar()
 		return
 
-	# The base class _ready() connects mouse signals and activates hotbar slots.
 	super._ready()
 
-	# Disconnect base class mouse-state connections so our _check_inputs override is used.
-	if change_mouse_state:
-		if opened_inventory and opened_inventory.is_connected(_update_opened_inventories):
-			opened_inventory.disconnect(_update_opened_inventories)
-		if closed_inventory and closed_inventory.is_connected(_update_opened_inventories):
-			closed_inventory.disconnect(_update_opened_inventories)
-		if opened_station and opened_station.is_connected(_update_opened_stations):
-			opened_station.disconnect(_update_opened_stations)
-		if closed_station and closed_station.is_connected(_update_opened_stations):
-			closed_station.disconnect(_update_opened_stations)
+	# Wire drop signals to spawn DroppedItem scenes
+	if main_inventory and not main_inventory.request_drop_item.is_connected(_on_request_drop_item):
+		main_inventory.request_drop_item.connect(_on_request_drop_item)
+	if equipment_inventory and not equipment_inventory.request_drop_item.is_connected(_on_request_drop_item):
+		equipment_inventory.request_drop_item.connect(_on_request_drop_item)
 
-	# Reconnect signals only for the authority peer
-	if is_multiplayer_authority():
-		if change_mouse_state:
-			opened_inventory.connect(_update_opened_inventories)
-			closed_inventory.connect(_update_opened_inventories)
-			opened_station.connect(_update_opened_stations)
-			closed_station.connect(_update_opened_stations)
-	else:
-		picked.connect(_on_picked)
-
-	# Wire drop signal to spawn DroppedItem3D scenes
-	if main_inventory:
-		if not main_inventory.request_drop_item.is_connected(_on_request_drop_item):
-			main_inventory.request_drop_item.connect(_on_request_drop_item)
-	if equipment_inventory:
-		if not equipment_inventory.request_drop_item.is_connected(_on_request_drop_item):
-			equipment_inventory.request_drop_item.connect(_on_request_drop_item)
-
-
-func _on_picked(obj: Node):
-	picked_rpc.rpc(obj.get_path())
-
-
-# ── Input overrides ─────────────────────────────────────────
+func _activate_hotbar() -> void:
+	if hotbar:
+		for i in range(8):
+			hotbar.active_slot(i)
 
 func _check_inputs():
 	if is_any_station_or_inventory_opened():
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	else:
-		if not OS.has_feature("web"):
-			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-
+	elif not OS.has_feature("web"):
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _input(event: InputEvent):
 	if Engine.is_editor_hint():
@@ -85,17 +50,13 @@ func _input(event: InputEvent):
 		hot_bar_inputs(event)
 		inventory_inputs()
 
-
 func _physics_process(_delta: float):
 	if Engine.is_editor_hint():
 		return
-	if not can_interact:
-		return
-	if interactor and is_multiplayer_authority():
+	if can_interact and interactor and is_multiplayer_authority():
 		interactor.try_interact()
 
-
-# ── Open / Close inventories ────────────────────────────────
+# ── Open / Close ─────────────────────────────────────────────
 
 func open_main_inventory():
 	if multiplayer.is_server():
@@ -103,25 +64,21 @@ func open_main_inventory():
 	else:
 		open_main_inventory_rpc.rpc_id(1)
 
-
 func open_inventory(inventory: Inventory):
 	if multiplayer.is_server():
 		super.open_inventory(inventory)
 	else:
 		open_inventory_rpc.rpc_id(1, inventory.get_path())
 
-
 func add_open_inventory(inventory: Inventory):
 	if multiplayer.is_server():
 		add_open_inventory_rpc.rpc(inventory.get_path())
 	super.add_open_inventory(inventory)
 
-
 func remove_open_inventory(inventory: Inventory):
 	if multiplayer.is_server():
 		remove_open_inventory_rpc.rpc(inventory.get_path())
 	super.remove_open_inventory(inventory)
-
 
 func close_inventories():
 	if multiplayer.is_server():
@@ -129,15 +86,11 @@ func close_inventories():
 	else:
 		close_inventories_rpc.rpc_id(1)
 
-
-# ── Open / Close craft stations ─────────────────────────────
-
 func open_main_craft_station():
 	if multiplayer.is_server():
 		super.open_main_craft_station()
 	else:
 		open_main_craft_station_rpc.rpc_id(1)
-
 
 func close_craft_stations():
 	if multiplayer.is_server():
@@ -145,8 +98,7 @@ func close_craft_stations():
 	else:
 		close_stations_rpc.rpc_id(1)
 
-
-# ── Picking up items ────────────────────────────────────────
+# ── Pick / Transfer / Split / Sort / Drop / Equip / Rotate ───
 
 func pick_to_inventory(node: Node):
 	if multiplayer.is_server():
@@ -154,8 +106,11 @@ func pick_to_inventory(node: Node):
 	else:
 		pick_to_inventory_rpc.rpc_id(1, node.get_path())
 
-
-# ── Transfer / Split / Sort / Drop / Equip / Rotate ─────────
+func transfer(inventory: GridInventory, origin_pos: Vector2i, destination: GridInventory, amount: int):
+	if multiplayer.is_server():
+		super.transfer(inventory, origin_pos, destination, amount)
+	else:
+		transfer_rpc.rpc_id(1, inventory.get_path(), origin_pos, destination.get_path(), amount)
 
 func transfer_to(inventory: GridInventory, origin_pos: Vector2i, destination: GridInventory, destination_pos: Vector2i, amount: int, is_rotated: bool):
 	if multiplayer.is_server():
@@ -163,15 +118,13 @@ func transfer_to(inventory: GridInventory, origin_pos: Vector2i, destination: Gr
 	else:
 		transfer_to_rpc.rpc_id(1, inventory.get_path(), origin_pos, destination.get_path(), destination_pos, amount, is_rotated)
 
-
 func rotate(stack: ItemStack, inventory: Inventory):
 	if multiplayer.is_server():
 		super.rotate(stack, inventory)
 	else:
-		var stack_index = inventory.stacks.find(stack)
-		if stack_index != -1:
-			rotate_rpc.rpc_id(1, stack_index, inventory.get_path())
-
+		var idx = inventory.stacks.find(stack)
+		if idx != -1:
+			rotate_rpc.rpc_id(1, idx, inventory.get_path())
 
 func split(inventory: Inventory, stack_index: int, amount: int):
 	if multiplayer.is_server():
@@ -179,42 +132,35 @@ func split(inventory: Inventory, stack_index: int, amount: int):
 	else:
 		split_rpc.rpc_id(1, inventory.get_path(), stack_index, amount)
 
-
 func sort(inventory: Inventory):
 	if multiplayer.is_server():
 		super.sort(inventory)
 	else:
 		sort_rpc.rpc_id(1, inventory.get_path())
 
-
 func drop(stack: ItemStack, inventory: Inventory):
 	if multiplayer.is_server():
 		super.drop(stack, inventory)
 	else:
-		var stack_index = inventory.stacks.find(stack)
-		if stack_index != -1:
-			drop_rpc.rpc_id(1, stack_index, inventory.get_path())
-
+		var idx = inventory.stacks.find(stack)
+		if idx != -1:
+			drop_rpc.rpc_id(1, idx, inventory.get_path())
 
 func equip(stack: ItemStack, inventory: Inventory, slot_index: int):
 	if multiplayer.is_server():
 		super.equip(stack, inventory, slot_index)
 	else:
-		var stack_index = inventory.stacks.find(stack)
-		if stack_index != -1:
-			equip_rpc.rpc_id(1, stack_index, inventory.get_path(), slot_index)
-
-
-# ── Crafting ────────────────────────────────────────────────
+		var idx = inventory.stacks.find(stack)
+		if idx != -1:
+			equip_rpc.rpc_id(1, idx, inventory.get_path(), slot_index)
 
 func craft(craft_station: CraftStation, recipe_index: int):
 	if multiplayer.is_server():
-		craft_rpc(craft_station.get_path(), recipe_index)
+		super.craft(craft_station, recipe_index)
 	else:
-		craft_rpc.rpc(craft_station.get_path(), recipe_index)
+		craft_rpc.rpc_id(1, craft_station.get_path(), recipe_index)
 
-
-# ── Hotbar ──────────────────────────────────────────────────
+# ── Hotbar ───────────────────────────────────────────────────
 
 func hotbar_change_selection(index: int):
 	if multiplayer.is_server():
@@ -222,13 +168,11 @@ func hotbar_change_selection(index: int):
 	else:
 		hotbar_change_selection_rpc.rpc_id(1, index)
 
-
 func hotbar_previous_item():
 	if multiplayer.is_server():
 		super.hotbar_previous_item()
 	else:
 		hotbar_previous_item_rpc.rpc_id(1)
-
 
 func hotbar_next_item():
 	if multiplayer.is_server():
@@ -236,160 +180,129 @@ func hotbar_next_item():
 	else:
 		hotbar_next_item_rpc.rpc_id(1)
 
-
-# ── Drop spawning ───────────────────────────────────────────
+# ── Drop spawning ────────────────────────────────────────────
 
 func _on_request_drop_item(item: String, amount: int, properties: Dictionary):
 	if not multiplayer.is_server():
 		return
-	# Try to get the dropped item scene from the item definition, or use fallback
-	var dropped_item_path = DROPPED_ITEM_3D_PATH
+	var path := DROPPED_ITEM_3D_PATH
 	var def = _database.get_item(item) if _database else null
-	if def != null and def.properties.has("dropped_item") and def.properties["dropped_item"] != null:
-		dropped_item_path = def.properties["dropped_item"]
-	var packed_scene: PackedScene = load(dropped_item_path)
-	if packed_scene == null:
-		push_warning("CoresapianInventorySystem: Could not load dropped item scene: %s" % dropped_item_path)
+	if def and def.properties.has("dropped_item") and def.properties["dropped_item"]:
+		path = def.properties["dropped_item"]
+	var scene: PackedScene = load(path)
+	if not scene:
 		return
-	var node = packed_scene.instantiate()
-	# Place in the world (parent's parent = the scene root)
+	var node = scene.instantiate()
 	get_parent().get_parent().add_child(node)
 	node.set("item_id", item)
 	node.set("amount", amount)
 	node.set("item_properties", properties)
-	# Drop in front of the player
 	var player = get_parent() as Node3D
 	if player:
 		node.global_position = player.global_position + (-player.global_basis.z * 1.5)
 		node.position.y += 0.5
 	else:
-		node.global_position = global_position
+		node.set("position", Vector3(0, 0.5, 0))
 
-
-# ── RPCs (server-side execution) ────────────────────────────
-
-@rpc("any_peer")
-func picked_rpc(obj_path: NodePath):
-	var obj = get_node_or_null(obj_path)
-	if obj:
-		picked.emit(obj)
-
+# ── RPCs ─────────────────────────────────────────────────────
 
 @rpc("any_peer")
 func open_main_inventory_rpc():
 	super.open_main_inventory()
 
-
-@rpc
+@rpc("any_peer")
 func open_inventory_rpc(inventory_path: NodePath):
-	var inventory = get_node_or_null(inventory_path)
-	if inventory:
-		super.open_inventory(inventory)
-
+	var inv = get_node_or_null(inventory_path)
+	if inv:
+		super.open_inventory(inv)
 
 @rpc("any_peer")
 func add_open_inventory_rpc(inventory_path: NodePath):
-	var inventory = get_node_or_null(inventory_path)
-	if inventory:
-		super.add_open_inventory(inventory)
-
+	var inv = get_node_or_null(inventory_path)
+	if inv:
+		super.add_open_inventory(inv)
 
 @rpc("any_peer")
 func remove_open_inventory_rpc(inventory_path: NodePath):
-	var inventory = get_node_or_null(inventory_path)
-	if inventory:
-		super.remove_open_inventory(inventory)
+	var inv = get_node_or_null(inventory_path)
+	if inv:
+		super.remove_open_inventory(inv)
 
-
-@rpc
+@rpc("any_peer")
 func close_inventories_rpc():
-	if multiplayer.is_server():
-		super.close_inventories()
+	super.close_inventories()
 
-
-@rpc
+@rpc("any_peer")
 func pick_to_inventory_rpc(node_path: NodePath):
 	var node = get_node_or_null(node_path)
 	if node:
 		super.pick_to_inventory(node)
 
+@rpc("any_peer")
+func transfer_rpc(inventory_path: NodePath, origin_pos: Vector2i, destination_path: NodePath, amount: int):
+	var inv = get_node_or_null(inventory_path)
+	var dest = get_node_or_null(destination_path)
+	if inv and dest:
+		super.transfer(inv, origin_pos, dest, amount)
 
-@rpc
+@rpc("any_peer")
 func transfer_to_rpc(inventory_path: NodePath, origin_pos: Vector2i, destination_path: NodePath, destination_pos: Vector2i, amount: int, is_rotated: bool):
 	var inv = get_node_or_null(inventory_path)
 	var dest = get_node_or_null(destination_path)
 	if inv and dest:
 		super.transfer_to(inv, origin_pos, dest, destination_pos, amount, is_rotated)
 
-
-@rpc
+@rpc("any_peer")
 func split_rpc(inventory_path: NodePath, stack_index: int, amount: int):
 	var inv = get_node_or_null(inventory_path)
 	if inv:
 		super.split(inv, stack_index, amount)
 
-
-@rpc
+@rpc("any_peer")
 func rotate_rpc(stack_index: int, inventory_path: NodePath):
 	var inv = get_node_or_null(inventory_path)
 	if inv and stack_index < inv.stacks.size():
 		super.rotate(inv.stacks[stack_index], inv)
 
-
-@rpc
+@rpc("any_peer")
 func sort_rpc(inventory_path: NodePath):
 	var inv = get_node_or_null(inventory_path)
 	if inv:
 		super.sort(inv)
 
-
-@rpc
+@rpc("any_peer")
 func drop_rpc(stack_index: int, inventory_path: NodePath):
 	var inv = get_node_or_null(inventory_path)
 	if inv and stack_index < inv.stacks.size():
 		super.drop(inv.stacks[stack_index], inv)
 
-
-@rpc
+@rpc("any_peer")
 func equip_rpc(stack_index: int, inventory_path: NodePath, slot_index: int):
 	var inv = get_node_or_null(inventory_path)
 	if inv and stack_index < inv.stacks.size():
 		super.equip(inv.stacks[stack_index], inv, slot_index)
 
-
-@rpc
+@rpc("any_peer")
 func hotbar_change_selection_rpc(selection_index: int):
-	if not multiplayer.is_server():
-		return
 	super.hotbar_change_selection(selection_index)
 
-
-@rpc
+@rpc("any_peer")
 func hotbar_previous_item_rpc():
-	if not multiplayer.is_server():
-		return
 	super.hotbar_previous_item()
 
-
-@rpc
+@rpc("any_peer")
 func hotbar_next_item_rpc():
-	if not multiplayer.is_server():
-		return
 	super.hotbar_next_item()
 
-
-@rpc
+@rpc("any_peer")
 func open_main_craft_station_rpc():
 	super.open_main_craft_station()
 
-
-@rpc
+@rpc("any_peer")
 func close_stations_rpc():
-	if multiplayer.is_server():
-		super.close_craft_stations()
+	super.close_craft_stations()
 
-
-@rpc
+@rpc("any_peer")
 func craft_rpc(craft_station_path: NodePath, recipe_index: int):
 	var station = get_node_or_null(craft_station_path)
 	if station:

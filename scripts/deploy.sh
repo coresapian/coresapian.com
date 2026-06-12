@@ -188,7 +188,7 @@ for ext_wasm in "$PROJECT_ROOT/public/game/"lib*.web.*.wasm; do
     fi
 done
 
-# Upload audio worklet files (Godot loads these as ${executable}.audio.worklet.js etc.)
+# Upload audio worklet files (Godot loads these as \${executable}.audio.worklet.js etc.)
 scp -q "$PROJECT_ROOT/public/game/index.audio.position.worklet.js" \
     "$REMOTE:$REMOTE_ROOT/game/index.audio.position.worklet.js"
 scp -q "$PROJECT_ROOT/public/game/index.audio.worklet.js" \
@@ -207,7 +207,7 @@ cp index.wasm "index-${WASM_HASH}.wasm"
 cp index.audio.position.worklet.js "index-${WASM_HASH}.audio.position.worklet.js"
 cp index.audio.worklet.js          "index-${WASM_HASH}.audio.worklet.js"
 
-# Copy side.wasm with hashed prefix (threaded worker — Godot constructs ${executable}.side.wasm)
+# Copy side.wasm with hashed prefix (threaded worker — Godot constructs \${executable}.side.wasm)
 if [ -f index.side.wasm ]; then
     cp index.side.wasm "index-${WASM_HASH}.side.wasm"
 fi

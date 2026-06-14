@@ -70,8 +70,9 @@ godot/.gdignore
 
 # --- Build artifacts (never commit compiled output) ---
 exports/
-public/game/index.html
+public/game/index.*
 *.pck
+*.wasm
 *.zip
 *.tar
 *.tar.gz

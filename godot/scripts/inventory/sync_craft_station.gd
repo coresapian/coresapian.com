@@ -6,7 +6,7 @@ extends Node
 var craftings_data: Array
 
 func _ready() -> void:
-	craft_station.can_finish_craftings = is_multiplayer_authority()
+	craft_station.can_finish_craftings = _is_server()
 	if multiplayer != null:
 		multiplayer.peer_connected.connect(_on_connected)
 	craft_station.crafting_added.connect(_on_crafting_added)
@@ -19,7 +19,7 @@ func _is_server() -> bool:
 	return multiplayer != null and multiplayer.is_server()
 
 func _on_connected(peer_id: int):
-	craft_station.can_finish_craftings = is_multiplayer_authority()
+	craft_station.can_finish_craftings = _is_server()
 	if not _is_server():
 		return
 	_update_craftings_rpc.rpc_id(peer_id, craftings_data)
@@ -63,7 +63,7 @@ func crafting_removed_rpc(crafting_index: int):
 @rpc
 @warning_ignore("shadowed_variable")
 func _update_craftings_rpc(craftings_data: Array):
-	craft_station.can_finish_craftings = is_multiplayer_authority()
+	craft_station.can_finish_craftings = _is_server()
 	for data in craftings_data:
 		var crafting = Crafting.new()
 		crafting.deserialize(data)

@@ -1,6 +1,6 @@
 ## Visual representation of a remote multiplayer player.
 ## Glowing orange phosphor orb that interpolates toward reported position.
-class_name PlayerOrb
+## No class_name — loaded dynamically to avoid parse errors on dedicated servers.
 extends Node3D
 
 var target_position: Vector3 = Vector3.ZERO

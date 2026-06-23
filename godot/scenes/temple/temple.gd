@@ -34,6 +34,10 @@ func _spawn_entities() -> void:
 	# Spawn player
 	if NetworkManager.is_dedicated_server:
 		pass  # server spawns on peer connect
+	elif OS.has_feature("web"):
+		# Web: always spawn local player for immediate visibility.
+		# Server connection happens in the background via main.gd.
+		_spawn_local_player()
 	elif multiplayer.multiplayer_peer == null or multiplayer.multiplayer_peer is OfflineMultiplayerPeer:
 		_spawn_local_player()
 	elif multiplayer.is_server():
@@ -49,6 +53,12 @@ func _on_peer_connected(peer_id: int) -> void:
 	_spawn_player(peer_id)
 
 func _on_peer_disconnected(peer_id: int) -> void:
+	# Never free the local player — it holds the camera and must persist
+	# across server disconnects/reconnects.
+	if peer_id == 1 and players.has(1):
+		var p = players[1]
+		if p.name == "LocalPlayer":
+			return
 	if players.has(peer_id):
 		players[peer_id].queue_free()
 		players.erase(peer_id)

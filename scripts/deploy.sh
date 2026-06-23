@@ -68,8 +68,25 @@ ok "Engine JS → v=$ENGINE_HASH"
 ok "Audio     → v=$AUDIO_HASH"
 ok "PCK hash  → $PCK_HASH ($PCK_SIZE bytes)"
 ok "WASM hash → $WASM_HASH ($WASM_SIZE bytes)"
+# Extract gdextensionLibs from the Godot export output (public/game/index.html)
+# so the served root page always matches what Godot actually exported.
+GDEXT_LIBS=$(python3 -c "
+import json, re, sys
+try:
+    txt = open('$PROJECT_ROOT/public/game/index.html').read()
+    m = re.search(r'\"gdextensionLibs\":\s*(\[[^\]]*\])', txt)
+    if m:
+        libs = json.loads(m.group(1))
+        print(','.join(libs) if libs else '')
+    else:
+        print('')
+except Exception:
+    print('')
+")
+
 ok "Exec (wasm) → $EXEC_ROOT"
 ok "MainPack    → $MAINPACK_ROOT"
+ok "GDExt libs  → ${GDEXT_LIBS:-none}"
 ok "Version     → $BUILD_VERSION"
 
 # ─── 2. Prepare staging directory ──────────────────────────────────
@@ -120,6 +137,24 @@ with open(f, 'w') as fh: fh.write(txt)
     sed -i '' -E "s|\"[/a-zA-Z]*index[a-zA-Z0-9.-]*\\.wasm\\\":\s*[0-9]+|\"${exec_value}.wasm\":${WASM_SIZE}|g" "$file"
     sed -i '' -E "s|\"[/a-zA-Z]*index[a-zA-Z0-9.-]*\\.pck\\\":\s*[0-9]+|\"${mainpack_value}\":${PCK_SIZE}|g" "$file"
 
+    # Sync gdextensionLibs from the Godot export output into the served page.
+    # Use basenames (no /game/ prefix) — Emscripten resolves them relative to
+    # the page URL. The deploy script copies the wasm to the web root so the
+    # relative URL resolves correctly.
+    python3 -c "
+import re, sys
+f = sys.argv[1]
+libs_str = sys.argv[2]
+with open(f) as fh: txt = fh.read()
+if libs_str:
+    items = ', '.join('\"' + l + '\"' for l in libs_str.split(',') if l)
+    replacement = '\"gdextensionLibs\": [' + items + ']'
+else:
+    replacement = '\"gdextensionLibs\": []'
+txt = re.sub(r'\"gdextensionLibs\":\s*\[[^\]]*\]', replacement, txt)
+with open(f, 'w') as fh: fh.write(txt)
+" "$file" "$GDEXT_LIBS"
+
     # Stamp the build version into the loader
     sed -i '' "s|data-version=\"[^\"]*\"|data-version=\"${BUILD_VERSION}\"|g" "$file"
 
@@ -157,12 +192,11 @@ ok "Patched index.html (staged)"
 # ─── 4. Deploy to LXC 103 ──────────────────────────────────────────
 log "Deploying to $REMOTE..."
 
-# HTML + shell files (from staging, not source)
-scp -q "$STAGING/root-index.html"            "$REMOTE:$REMOTE_ROOT/index.html"
+# Shell files (small, safe to upload first)
 scp -q "$PROJECT_ROOT/public/game/game-shell.css" "$REMOTE:$REMOTE_ROOT/game/game-shell.css"
 scp -q "$PROJECT_ROOT/public/game/game-shell.js"  "$REMOTE:$REMOTE_ROOT/game/game-shell.js"
 scp -q "$PROJECT_ROOT/public/game/index.js"       "$REMOTE:$REMOTE_ROOT/game/index.js"
-ok "HTML + shell deployed"
+ok "Shell JS/CSS deployed"
 
 # Audio
 scp -q "$PROJECT_ROOT/assets/audio/orchastra-cinematic-001.mp3" \
@@ -181,10 +215,14 @@ if [[ -f "$PROJECT_ROOT/public/game/index.side.wasm" ]]; then
     scp -q "$PROJECT_ROOT/public/game/index.side.wasm" "$REMOTE:$REMOTE_ROOT/game/index.side.wasm"
 fi
 
-# Upload GDExtension wasm binaries
+# Upload GDExtension wasm binaries to /game/ AND web root /
+# Root copy is needed because gdextensionLibs uses basenames resolved
+# relative to the page URL (/), not the executable path (/game/)
 for ext_wasm in "$PROJECT_ROOT/public/game/"lib*.web.*.wasm; do
     if [[ -f "$ext_wasm" ]]; then
-        scp -q "$ext_wasm" "$REMOTE:$REMOTE_ROOT/game/$(basename "$ext_wasm")"
+        local_name=$(basename "$ext_wasm")
+        scp -q "$ext_wasm" "$REMOTE:$REMOTE_ROOT/game/$local_name"
+        scp -q "$ext_wasm" "$REMOTE:$REMOTE_ROOT/$local_name"
     fi
 done
 
@@ -243,6 +281,13 @@ ls -la index-*.pck index-*.wasm
 REMOTE_SETUP
 ok "Hashed .pck and .wasm deployed"
 
+# ─── 5b. Deploy HTML LAST (only after all assets are in place) ──────
+# This prevents a race where live HTML points to hashed files that
+# don't exist yet if an earlier SCP times out.
+log "Deploying HTML (all assets verified present)..."
+scp -q "$STAGING/root-index.html" "$REMOTE:$REMOTE_ROOT/index.html"
+ok "HTML deployed"
+
 # ─── 6. Reload nginx ───────────────────────────────────────────────
 log "Reloading nginx..."
 ssh "$REMOTE" "nginx -t 2>&1 && systemctl reload nginx"
@@ -250,6 +295,36 @@ ok "nginx reloaded"
 
 # ─── 7. Verify ─────────────────────────────────────────────────────
 log "Verifying deployment..."
+
+# Verify all URLs the browser actually requests return 200
+VERIFY_URLS=(
+    "https://coresapian.com/"
+    "https://coresapian.com/game/index-${PCK_HASH}.pck"
+    "https://coresapian.com/game/index-${WASM_HASH}.wasm"
+    "https://coresapian.com/game/index-${WASM_HASH}.side.wasm"
+    "https://coresapian.com/game/game-shell.js"
+    "https://coresapian.com/game/game-shell.css"
+    "https://coresapian.com/game/index.js"
+)
+for ext_wasm in "$PROJECT_ROOT/public/game/"lib*.web.*.wasm; do
+    [ -f "$ext_wasm" ] && VERIFY_URLS+=("https://coresapian.com/$(basename "$ext_wasm")")
+done
+
+VERIFY_FAILED=0
+for url in "${VERIFY_URLS[@]}"; do
+    status=$(curl -sI "$url" 2>/dev/null | head -1 | grep -oE '[0-9]{3}')
+    if [ "$status" != "200" ]; then
+        err "VERIFY FAILED: $url → HTTP $status"
+        VERIFY_FAILED=1
+    else
+        ok "  $url → 200"
+    fi
+done
+
+if [ $VERIFY_FAILED -ne 0 ]; then
+    err "Deploy verification FAILED — some URLs return non-200. Site may be broken."
+    exit 1
+fi
 
 ssh "$REMOTE" bash -s <<VERIFY
 set -e

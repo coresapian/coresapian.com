@@ -68,6 +68,15 @@ godot/.godot/
 *.translation
 godot/.gdignore
 
+# --- GDExtension binaries (only keep web + macos + linux x86_64) ---
+# These platform libs are 80+ MB of binaries we never build for.
+godot/addons/inventory-system/bin/android/
+godot/addons/inventory-system/bin/windows/
+godot/addons/inventory-system/bin/linux/*arm32*
+godot/addons/inventory-system/bin/linux/*arm64*
+godot/addons/inventory-system/bin/linux/*rv64*
+godot/addons/inventory-system/bin/linux/*x86_32*
+
 # --- Build artifacts (never commit compiled output) ---
 exports/
 public/game/index.*

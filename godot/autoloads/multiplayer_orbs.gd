@@ -96,7 +96,7 @@ func _process(delta: float) -> void:
 
 	for id in _remote_players:
 		var entry: Dictionary = _remote_players[id]
-		var orb: PlayerOrb = entry["orb"]
+		var orb: Node3D = entry["orb"]
 		orb.target_position = entry["target_pos"]
 		orb.target_rot_y = entry["target_rot_y"]
 		orb.target_rot_x = entry["target_rot_x"]
@@ -209,8 +209,14 @@ func _on_packet_received(json_string: String) -> void:
 
 # ── Orb Management ───────────────────────────────────────────────────
 
+const ORB_SCRIPT_PATH := "res://scenes/player_orb.gd"
+
 func _create_and_register_orb(id: String) -> void:
-	var orb := PlayerOrb.new()
+	var OrbClass: GDScript = load(ORB_SCRIPT_PATH) as GDScript
+	if OrbClass == null:
+		push_error("[MultiplayerOrbs] Could not load PlayerOrb script")
+		return
+	var orb: Node3D = OrbClass.new()
 	orb.player_id = id
 	orb.name = "PlayerOrb_%s" % id
 	orb.interpolation_speed = interpolation_speed
@@ -238,7 +244,7 @@ func _remove_player_orb(id: String) -> void:
 	var entry: Dictionary = _remote_players.get(id, {})
 	if entry.is_empty():
 		return
-	var orb: PlayerOrb = entry["orb"]
+	var orb: Node3D = entry["orb"]
 	if orb and is_instance_valid(orb):
 		orb.queue_free()
 	_remote_players.erase(id)

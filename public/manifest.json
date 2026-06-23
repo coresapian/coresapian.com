@@ -1,7 +1,7 @@
 {
   "name": "CoreSapian Inc.",
   "short_name": "CoreSapian",
-  "description": "A 3D first-person lab experience — explore the Coresapian temple in real-time 3D.",
+  "description": "CoreSapian Inc. — a real-time 3D interactive experience.",
   "start_url": "/",
   "display": "fullscreen",
   "orientation": "any",

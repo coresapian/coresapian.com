@@ -1,8 +1,8 @@
 # CoreSapian.com
 
-A 3D first-person temple experience built with Godot 4.6, deployed as a WebGL web app.
+A 3D first-person interactive experience built with Godot 4.6, deployed as a WebGL web app.
 Features an Orange Phosphor CRT terminal UI, real-time anonymous chat, and multiplayer
-temple exploration with glowing orbs.
+exploration with glowing orbs.
 
 ## Architecture
 
@@ -55,7 +55,7 @@ coresapian/
 │   ├── scenes/
 │   │   ├── main.gd/tscn            # Main entry point + fade overlay
 │   │   ├── player_orb.gd           # Remote player orb visualization
-│   │   ├── core_truths/            # Temple scene + player controller
+│   │   ├── core_truths/            # Main scene + player controller
 │   │   └── ui/
 │   │       └── settings_menu.gd    # In-game settings panel
 │   ├── autoloads/

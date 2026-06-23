@@ -8,27 +8,27 @@ SERVICES = {
     "coresapian": {
         "url": "https://coresapian.com/",
         "name": "Coresapian.com",
-        "desc": "The Hearth-Fire — main website and game portal"
+        "desc": "Main website and game portal"
     },
     "godot_game": {
         "url": "https://coresapian.com/",
         "name": "Godot Game Server",
-        "desc": "The Great Hall — multiplayer temple server"
+        "desc": "Multiplayer server"
     },
     "anonymous_chat": {
         "url": "https://coresapian.com/ws/chat",
         "name": "Anonymous Chat",
-        "desc": "The Whispering Wind — global chat relay"
+        "desc": "Global chat relay"
     },
     "multiplayer_orbs": {
         "url": "http://localhost:8082/health",
         "name": "Multiplayer Orbs",
-        "desc": "The Astral Path — real-time player position relay"
+        "desc": "Real-time player position relay"
     },
     "starpark": {
         "url": "https://starpark.app/",
         "name": "StarPark",
-        "desc": "The Star-Forge — AI image generation"
+        "desc": "AI image generation"
     },
 }
 
@@ -114,8 +114,8 @@ def main():
         "godot_game":      SERVICES["godot_game"],
         "anonymous_chat":  SERVICES["anonymous_chat"],
         "starpark":        SERVICES["starpark"],
-        "plonk":           {"name": "PLONK", "desc": "The All-Seer — visual geolocation"},
-        "njorun":          {"name": "Njörun", "desc": "The World-Weaver — 3D scene generation"},
+        "plonk":           {"name": "PLONK", "desc": "Visual geolocation"},
+        "njorun":          {"name": "Njörun", "desc": "3D scene generation"},
     }
 
     for svc_id in all_service_ids:

@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════
- * CORESAPIAN — Temple Shell JS v3.0
+ * CORESAPIAN — Shell JS v3.0
  *
  * What changed from v2:
  *   • Removed click overlay — game starts immediately after load
@@ -52,10 +52,10 @@ const STATUS_MESSAGES = [
   { pct: 10,  text: "Loading runtime" },
   { pct: 25,  text: "Decoding assets" },
   { pct: 45,  text: "Building world geometry" },
-  { pct: 65,  text: "Carving temple halls" },
+  { pct: 65,  text: "Assembling geometry" },
   { pct: 80,  text: "Lighting the torches" },
   { pct: 92,  text: "Awakening the spirits" },
-  { pct: 100, text: "Entering the temple" },
+  { pct: 100, text: "Launching experience" },
 ];
 
 function getStatusText(percent) {
@@ -101,7 +101,7 @@ function showLoadingError(detail) {
 
 function hideLoadingScreen() {
   if (stallTimer) { clearTimeout(stallTimer); stallTimer = 0; }
-  if (loaderStatus) loaderStatus.textContent = "Entering the temple";
+  if (loaderStatus) loaderStatus.textContent = "Launching experience";
   if (loaderFill) loaderFill.style.width = "100%";
   if (loaderPercent) loaderPercent.textContent = "100%";
 

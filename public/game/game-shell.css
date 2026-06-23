@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════════
-   CORESAPIAN — Temple Shell CSS v3.0
+   CORESAPIAN — Shell CSS v3.0
    ═══════════════════════════════════════════════════════════════════ */
 
 :root {
   color-scheme: dark;
 
-  /* Amber/temple palette */
+  /* Amber palette */
   --amber: #FF8C00;
   --amber-bright: #FFB347;
   --amber-glow: rgba(255, 140, 0, 0.6);

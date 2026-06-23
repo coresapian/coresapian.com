@@ -2,9 +2,9 @@
 """
 Generate CoreSapian ⟁ (U+27C1) favicon/icon set.
 
-Renders the ⟁ glyph — an outer outline triangle with a smaller solid triangle
-inside — in glowing orange (#FF8C00) on near-black (#050200) background.
-The design matches the loading screen's loader__symbol element.
+Renders the actual ⟁ Unicode glyph using Apple Symbols font, in glowing
+orange (#FF8C00) on near-black (#050200) background. The glow is achieved
+via a blurred copy of the glyph composited underneath.
 
 Outputs:
   - public/icons/android-chrome-512x512.png
@@ -18,14 +18,20 @@ Outputs:
   - public/icons/mstile-150x150.png
   - public/favicon.ico (16/32/48 multi-res)
 """
-from PIL import Image, ImageDraw, ImageFilter
-import math
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import os
 
 BG_COLOR = (5, 2, 0, 255)           # #050200 near-black
-TRIANGLE_COLOR = (255, 140, 0, 255)  # #FF8C00 glowing orange
-GLOW_COLOR = (255, 140, 0, 80)       # subtle outer glow
-STROKE_WIDTH_RATIO = 0.035           # outline thickness relative to canvas size
+GLOW_COLOR = (255, 140, 0, 255)     # #FF8C00 glowing orange
+MAIN_COLOR = (255, 140, 0, 255)     # #FF8C00
+GLYPH = "\u27c1"                    # ⟁
+FONT_PATH = "/System/Library/Fonts/Apple Symbols.ttf"
+
+# Fallback fonts if Apple Symbols is unavailable
+FALLBACK_FONTS = [
+    "/Library/Fonts/Arial Unicode.ttf",
+    "/System/Library/Fonts/STIXGeneral.ttf",
+]
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ICONS_DIR = os.path.join(PROJECT_ROOT, "public", "icons")
@@ -46,73 +52,91 @@ PNG_SIZES = [
 ICO_SIZES = [16, 32, 48]
 
 
-def equilateral_points(cx, cy, height, pointing_up=True):
-    """Return 3 vertices of an equilateral triangle centered at (cx, cy) with given height."""
-    half_base = height * (1.0 / math.sqrt(3))  # half side length for equilateral
-    if pointing_up:
-        return [
-            (cx, cy - height / 2),           # apex top
-            (cx - half_base, cy + height / 2),  # bottom-left
-            (cx + half_base, cy + height / 2),  # bottom-right
-        ]
-    else:
-        return [
-            (cx, cy + height / 2),           # apex bottom
-            (cx - half_base, cy - height / 2),  # top-left
-            (cx + half_base, cy - height / 2),  # top-right
-        ]
+def find_font():
+    """Find a font file that supports U+27C1."""
+    candidates = [FONT_PATH] + FALLBACK_FONTS
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                f = ImageFont.truetype(path, 64)
+                mask = f.getmask(GLYPH)
+                if mask.size[0] > 0 and mask.size[1] > 0:
+                    return path
+            except Exception:
+                pass
+    return None
 
 
-def draw_icon(size: int) -> Image.Image:
+def draw_icon(size: int, font_path: str) -> Image.Image:
     """
-    Draw ⟁ (U+27C1): outer outline triangle + inner solid triangle, glowing orange on black.
+    Render the ⟁ glyph centered on the canvas with a glowing orange effect.
 
-    The inner triangle is ~55% the size of the outer, centered, filled solid.
-    The outer triangle is drawn as a thick stroke outline.
+    The glow is a blurred copy of the glyph at half opacity, composited
+    underneath the sharp glyph layer.
     """
-    img = Image.new("RGBA", (size, size), BG_COLOR)
+    # Use high-res rendering then downscale for antialiasing on small sizes
+    scale = max(1, 8 if size <= 16 else 4 if size <= 48 else 2 if size <= 128 else 1)
+    hr_size = size * scale
+
+    img = Image.new("RGBA", (hr_size, hr_size), BG_COLOR)
+
+    # Font size: fill ~75% of the canvas (larger for better small-size visibility)
+    font_size = int(hr_size * 0.75)
+    font = ImageFont.truetype(font_path, font_size)
+
+    cx, cy = hr_size / 2, hr_size / 2
+
+    # --- Glow layer: render glyph, blur, composite ---
+    glow_img = Image.new("RGBA", (hr_size, hr_size), (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow_img)
+    glow_draw.text((cx, cy), GLYPH, font=font, fill=GLOW_COLOR, anchor="mm")
+    blur_radius = max(2, int(hr_size * 0.03))
+    glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+    # Boost glow opacity
+    glow_alpha = glow_img.split()[3].point(lambda a: min(255, int(a * 1.5)))
+    glow_img.putalpha(glow_alpha)
+    img = Image.alpha_composite(img, glow_img)
+
+    # --- Sharp glyph on top (rendered twice for thickness at small sizes) ---
     draw = ImageDraw.Draw(img)
+    draw.text((cx, cy), GLYPH, font=font, fill=MAIN_COLOR, anchor="mm")
+    # Slight offset re-render to thicken strokes (helps at 16x16)
+    if size <= 32:
+        for dx, dy in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
+            draw.text((cx + dx * scale, cy + dy * scale), GLYPH,
+                      font=font, fill=MAIN_COLOR, anchor="mm")
 
-    cx = size / 2
-    cy = size / 2
-    outer_height = size * 0.60  # outer triangle takes 60% of canvas height
-
-    # --- Glow layer (blurred triangle behind everything) ---
-    if size >= 32:
-        glow_height = size * 0.68
-        glow_pts = equilateral_points(cx, cy, glow_height, pointing_up=True)
-        glow_img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-        glow_draw = ImageDraw.Draw(glow_img)
-        glow_draw.polygon(glow_pts, fill=GLOW_COLOR)
-        glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=size * 0.05))
-        img = Image.alpha_composite(img, glow_img)
-        draw = ImageDraw.Draw(img)
-
-    # --- Outer triangle (outline / stroke) ---
-    outer_pts = equilateral_points(cx, cy, outer_height, pointing_up=True)
-    stroke_w = max(2, int(size * STROKE_WIDTH_RATIO))
-    draw.polygon(outer_pts, outline=TRIANGLE_COLOR, width=stroke_w)
-
-    # --- Inner triangle (solid filled, smaller, centered) ---
-    inner_height = outer_height * 0.50
-    inner_pts = equilateral_points(cx, cy, inner_height, pointing_up=True)
-    draw.polygon(inner_pts, fill=TRIANGLE_COLOR)
+    # Downscale if needed
+    if scale > 1:
+        img = img.resize((size, size), Image.LANCZOS)
 
     return img
 
 
 def main():
+    font_path = find_font()
+    if not font_path:
+        print("ERROR: No font supporting U+27C1 found. Install Apple Symbols or Arial Unicode.")
+        print("Falling back to system default — glyph may not render correctly.")
+        font_path = ""
+
+    if font_path:
+        font_name = os.path.basename(font_path)
+        print(f"Using font: {font_name}")
+
     os.makedirs(ICONS_DIR, exist_ok=True)
 
-    # Generate PNGs
     for filename, size in PNG_SIZES:
-        img = draw_icon(size)
+        if font_path:
+            img = draw_icon(size, font_path)
+        else:
+            img = draw_icon_fallback(size)
         path = os.path.join(ICONS_DIR, filename)
         img.save(path, "PNG")
         print(f"  ✓ {filename} ({size}x{size})")
 
-    # Generate multi-resolution ICO
-    ico_images = [draw_icon(s) for s in ICO_SIZES]
+    # Multi-resolution ICO
+    ico_images = [draw_icon(s, font_path) for s in ICO_SIZES]
     ico_images[0].save(
         ICO_PATH,
         format="ICO",
@@ -122,6 +146,46 @@ def main():
     print(f"  ✓ favicon.ico (16/32/48)")
 
     print(f"\nDone. {len(PNG_SIZES)} PNGs + 1 ICO generated.")
+
+
+def draw_icon_fallback(size: int) -> Image.Image:
+    """Fallback: draw the ⟁ shape geometrically if no font is available."""
+    import math
+    img = Image.new("RGBA", (size, size), BG_COLOR)
+    draw = ImageDraw.Draw(img)
+    cx = size / 2
+    cy = size / 2
+    outer_h = size * 0.60
+    half_base = outer_h / math.sqrt(3)
+    outer = [
+        (cx, cy - outer_h / 2),
+        (cx - half_base, cy + outer_h / 2),
+        (cx + half_base, cy + outer_h / 2),
+    ]
+    # Glow
+    if size >= 32:
+        glow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        gd = ImageDraw.Draw(glow)
+        gh = outer_h * 1.1
+        ghb = gh / math.sqrt(3)
+        gp = [(cx, cy - gh / 2), (cx - ghb, cy + gh / 2), (cx + ghb, cy + gh / 2)]
+        gd.polygon(gp, fill=(255, 140, 0, 100))
+        glow = glow.filter(ImageFilter.GaussianBlur(radius=size * 0.05))
+        img = Image.alpha_composite(img, glow)
+        draw = ImageDraw.Draw(img)
+    # Outer outline
+    sw = max(2, int(size * 0.035))
+    draw.polygon(outer, outline=MAIN_COLOR, width=sw)
+    # Inner solid triangle
+    inner_h = outer_h * 0.50
+    inner_hb = inner_h / math.sqrt(3)
+    inner = [
+        (cx, cy - inner_h / 2),
+        (cx - inner_hb, cy + inner_h / 2),
+        (cx + inner_hb, cy + inner_h / 2),
+    ]
+    draw.polygon(inner, fill=MAIN_COLOR)
+    return img
 
 
 if __name__ == "__main__":

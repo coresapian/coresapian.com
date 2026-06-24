@@ -5,6 +5,8 @@ const INVENTORY_UI_SCENE: PackedScene = preload("res://scenes/ui/inventory_ui.ts
 const SPAWN_POSITION := Vector3(0, 5, 7)
 const KILL_PLANE_Y := -20.0
 const SKY_PANORAMA_PATH := "res://resources/fantasy_sky_background_0.jpg"
+const RUNE_STONE_SCENE: PackedScene = preload("res://scenes/interactables/rune_stone.tscn")
+const WATER_ORB_SCENE: PackedScene = preload("res://scenes/interactables/water_orb.tscn")
 
 var players: Dictionary = {}
 
@@ -30,6 +32,15 @@ func _spawn_entities() -> void:
 	var chest = preload("res://scenes/items/loot_chest.tscn").instantiate()
 	chest.position = _find_floor_below(Vector3(3, 5, 0))
 	add_child(chest)
+
+	# Spawn teleporters
+	var rune_stone = RUNE_STONE_SCENE.instantiate()
+	rune_stone.position = _find_floor_below(Vector3(-5, 5, 3))
+	add_child(rune_stone)
+
+	var water_orb = WATER_ORB_SCENE.instantiate()
+	water_orb.position = _find_floor_below(Vector3(5, 5, 3))
+	add_child(water_orb)
 
 	# Spawn player
 	if NetworkManager.is_dedicated_server:

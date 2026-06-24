@@ -195,13 +195,19 @@ log "Deploying to $REMOTE..."
 # Shell files (small, safe to upload first)
 scp -q "$PROJECT_ROOT/public/game/game-shell.css" "$REMOTE:$REMOTE_ROOT/game/game-shell.css"
 scp -q "$PROJECT_ROOT/public/game/game-shell.js"  "$REMOTE:$REMOTE_ROOT/game/game-shell.js"
+scp -q "$PROJECT_ROOT/public/game/llm-worker.js"   "$REMOTE:$REMOTE_ROOT/game/llm-worker.js"
 scp -q "$PROJECT_ROOT/public/game/index.js"       "$REMOTE:$REMOTE_ROOT/game/index.js"
-ok "Shell JS/CSS deployed"
+ok "Shell JS/CSS + LLM worker deployed"
 
 # Audio
 scp -q "$PROJECT_ROOT/assets/audio/orchastra-cinematic-001.mp3" \
     "$REMOTE:$REMOTE_ROOT/orchastra-cinematic-001.mp3"
 ok "Audio deployed"
+
+# OG social card
+scp -q "$PROJECT_ROOT/public/og-card.png" \
+    "$REMOTE:$REMOTE_ROOT/og-card.png"
+ok "OG card deployed"
 
 # ─── 5. Deploy hashed .pck and .wasm ────────────────────────────────
 log "Deploying hashed engine assets..."
@@ -299,11 +305,13 @@ log "Verifying deployment..."
 # Verify all URLs the browser actually requests return 200
 VERIFY_URLS=(
     "https://coresapian.com/"
+    "https://coresapian.com/og-card.png"
     "https://coresapian.com/game/index-${PCK_HASH}.pck"
     "https://coresapian.com/game/index-${WASM_HASH}.wasm"
     "https://coresapian.com/game/index-${WASM_HASH}.side.wasm"
     "https://coresapian.com/game/game-shell.js"
     "https://coresapian.com/game/game-shell.css"
+    "https://coresapian.com/game/llm-worker.js"
     "https://coresapian.com/game/index.js"
 )
 for ext_wasm in "$PROJECT_ROOT/public/game/"lib*.web.*.wasm; do

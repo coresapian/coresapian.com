@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
-  <rect width="128" height="128" fill="#030308"/>
-  <text x="64" y="72" font-family="serif" font-size="48" fill="#00ff41" text-anchor="middle" dominant-baseline="middle">ᚲ</text>
+  <rect width="128" height="128" fill="#050200"/>
+  <polygon points="64,20 106,100 22,100" fill="none" stroke="#FF8C00" stroke-width="7" stroke-linejoin="round"/>
+  <polygon points="64,48 88,92 40,92" fill="#FF8C00"/>
 </svg>

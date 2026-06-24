@@ -1,0 +1,41 @@
+[gd_scene load_steps=5 format=3 uid="uid://bwaterbtorb001"]
+
+[ext_resource type="Script" path="res://scripts/interactable_teleporter.gd" id="1_tele"]
+
+[sub_resource type="SphereShape3D" id="sphere_shape"]
+radius = 0.7
+
+[sub_resource type="StandardMaterial3D" id="water_mat"]
+transparency = 1
+albedo_color = Color(0.2, 0.5, 0.8, 0.4)
+emission_enabled = true
+emission = Color(0.15, 0.35, 0.6, 1)
+emission_energy_multiplier = 1.5
+roughness = 0.1
+metallic = 0.0
+
+[sub_resource type="SphereMesh" id="orb_mesh"]
+radius = 0.6
+height = 1.2
+
+[node name="WaterOrb" type="Area3D"]
+script = ExtResource("1_tele")
+destination_url = "https://coresapian.com"
+destination_name = "Coresapian"
+prompt_text = "Press E to enter Coresapian"
+interact_range = 4.0
+label_height = 2.0
+
+[node name="OrbMesh" type="MeshInstance3D" parent="."]
+material_override = SubResource("water_mat")
+mesh = SubResource("orb_mesh")
+
+[node name="OrbCollision" type="CollisionShape3D" parent="."]
+shape = SubResource("sphere_shape")
+
+[node name="GlowLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+light_color = Color(0.2, 0.5, 0.9, 1)
+light_energy = 3.0
+omni_range = 4.0
+omni_attenuation = 1.2

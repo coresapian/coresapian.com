@@ -477,6 +477,29 @@ body {
   color: rgba(255, 140, 0, 0.2);
 }
 
+/* AI message styling */
+.chat-msg--ai {
+  color: var(--amber-bright);
+  text-shadow: 0 0 4px rgba(255, 140, 0, 0.15);
+}
+
+.chat-msg__ai-label {
+  display: inline-block;
+  background: rgba(255, 140, 0, 0.12);
+  border: 1px solid rgba(255, 140, 0, 0.3);
+  border-radius: 3px;
+  padding: 0 0.3em;
+  font-size: 0.7em;
+  margin-right: 0.3em;
+  vertical-align: middle;
+}
+
+.chat-msg__tps {
+  color: rgba(255, 140, 0, 0.3);
+  font-size: 0.7em;
+  margin-left: 0.3em;
+}
+
 .chat-panel__send {
   background: none;
   border: 1px solid rgba(255, 140, 0, 0.3);
@@ -542,4 +565,105 @@ body {
   .loader__glow { animation: none; }
   #loader { transition: opacity 300ms ease; }
   .chat-panel { transition: transform 150ms ease; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FROSTBRIDGE — Nordic realm transition overlay
+   Triggered by window.FrostBridge.travel(url) from Godot teleporters.
+   3-phase animation: Awakening → Crossing → Arrival
+   ═══════════════════════════════════════════════════════════════════ */
+
+#frostbridge {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center,
+    rgba(13, 71, 161, 0.85) 0%,
+    rgba(5, 2, 0, 0.98) 70%,
+    #050200 100%);
+  transition: opacity 400ms ease;
+}
+
+#frostbridge.is-active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+#frostbridge__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.frostbridge__rune {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0) rotate(0deg);
+  font-size: clamp(3rem, 10vw, 6rem);
+  color: #00E5FF;
+  text-shadow:
+    0 0 20px #00E5FF,
+    0 0 40px rgba(0, 229, 255, 0.6),
+    0 0 80px rgba(0, 229, 255, 0.3);
+  opacity: 0;
+  transition: all 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: "Cinzel", serif;
+  pointer-events: none;
+  z-index: 3;
+  line-height: 1;
+}
+
+#frostbridge.is-active .frostbridge__rune {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1) rotate(120deg);
+}
+
+#frostbridge.is-crossing .frostbridge__rune {
+  transform: translate(-50%, -50%) scale(3) rotate(360deg);
+  opacity: 0;
+  transition: all 800ms ease-in;
+}
+
+.frostbridge__flash {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.frostbridge__flash.is-flashing {
+  animation: frostbridge-flash 300ms ease-out forwards;
+}
+
+@keyframes frostbridge-flash {
+  0%   { opacity: 0; }
+  30%  { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+.frostbridge__status {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Share Tech Mono", monospace;
+  font-size: clamp(0.7rem, 2vw, 0.9rem);
+  color: rgba(0, 229, 255, 0.6);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 400ms ease 600ms;
+  pointer-events: none;
+  z-index: 5;
+  white-space: nowrap;
+}
+
+#frostbridge.is-crossing .frostbridge__status {
+  opacity: 1;
 }

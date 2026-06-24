@@ -44,6 +44,12 @@ let unreadCount = 0;
 let chatReconnectTimer = 0;
 let audioActivated = false;
 
+// LLM worker state
+let llmWorker = null;
+let llmState = "idle"; // idle | loading | ready | generating
+let llmChatHistory = []; // [{role, content}] for the LLM context
+let llmStreamingMsg = null; // DOM element for streaming output
+
 const trackedAudioContexts = new Set();
 
 // ── Loading status messages ───────────────────────────────────────
@@ -53,8 +59,8 @@ const STATUS_MESSAGES = [
   { pct: 25,  text: "Decoding assets" },
   { pct: 45,  text: "Building world geometry" },
   { pct: 65,  text: "Assembling geometry" },
-  { pct: 80,  text: "Lighting the torches" },
-  { pct: 92,  text: "Awakening the spirits" },
+  { pct: 80,  text: "Optimizing scene" },
+  { pct: 92,  text: "Finalizing load" },
   { pct: 100, text: "Launching experience" },
 ];
 
@@ -202,6 +208,19 @@ function sendChatMessage() {
   if (!chatInput) return;
   const text = chatInput.value.trim();
   if (!text) return;
+
+  // Check for @ai mention — route to local LLM instead of chat server
+  if (/^@ai\b/i.test(text) || /\s@ai\b/i.test(text)) {
+    const prompt = text.replace(/^@ai\s*/i, "").replace(/\s@ai\s*$/i, "").trim();
+    if (prompt) {
+      handleAiMessage(prompt);
+      chatInput.value = "";
+      chatInput.focus();
+    }
+    return;
+  }
+
+  // Normal chat — send to WebSocket relay
   if (!chatWs || chatWs.readyState !== WebSocket.OPEN) {
     chatInput.style.transition = "border-bottom-color 0.3s ease";
     chatInput.style.borderBottom = "1px solid #ff4444";
@@ -211,6 +230,187 @@ function sendChatMessage() {
   chatWs.send(JSON.stringify({ text }));
   chatInput.value = "";
   chatInput.focus();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 2b — LLM (@ai mention) via transformers.js Web Worker
+// ═══════════════════════════════════════════════════════════════════
+
+function handleAiMessage(prompt) {
+  // Show user message in chat
+  appendChatMessage({ text: `@ai ${prompt}`, timestamp: new Date().toISOString() });
+
+  // Lazy-load the worker on first use
+  if (!llmWorker) {
+    initLlmWorker();
+  }
+
+  if (llmState === "loading") {
+    appendSystemMessage("⏳ AI model is still loading... please wait.");
+    return;
+  }
+
+  if (llmState === "generating") {
+    appendSystemMessage("⏳ AI is already generating a response. Wait or type @ai stop.");
+    return;
+  }
+
+  if (llmState === "idle") {
+    // First use — trigger model download
+    appendSystemMessage("🤖 Loading AI model into your browser (first time only, ~460MB)...");
+    llmState = "loading";
+    llmWorker.postMessage({ type: "load" });
+
+    // Queue the prompt — it'll be sent once the model is ready
+    llmPendingPrompt = prompt;
+    return;
+  }
+
+  // Model is ready — generate
+  if (llmState === "ready") {
+    runAiGeneration(prompt);
+  }
+}
+
+let llmPendingPrompt = null;
+
+function initLlmWorker() {
+  // Determine worker URL — same directory as game-shell.js
+  const workerUrl = new URL("llm-worker.js", import.meta.url).href;
+
+  llmWorker = new Worker(workerUrl, { type: "module" });
+
+  llmWorker.addEventListener("message", (e) => {
+    const { status, data, output, tps, numTokens } = e.data;
+
+    switch (status) {
+      case "loading":
+        // Model is downloading or warming up
+        if (data) {
+          updateLlmStatusMessage(data);
+        }
+        break;
+
+      case "progress":
+        // Download progress for specific files
+        if (data && data.status === "progress" && data.file) {
+          const pct = data.total > 0 ? Math.round((data.loaded / data.total) * 100) : 0;
+          updateLlmStatusMessage(`📥 ${data.file} — ${pct}%`);
+        }
+        break;
+
+      case "ready":
+        llmState = "ready";
+        updateLlmStatusMessage("✅ AI ready!");
+        // If there's a pending prompt from before the model loaded, process it
+        if (llmPendingPrompt) {
+          const p = llmPendingPrompt;
+          llmPendingPrompt = null;
+          runAiGeneration(p);
+        }
+        break;
+
+      case "start":
+        // Generation starting — create streaming message element
+        llmState = "generating";
+        llmStreamingMsg = document.createElement("div");
+        llmStreamingMsg.className = "chat-msg chat-msg--ai";
+        llmStreamingMsg.innerHTML =
+          '<span class="chat-msg__time">' + escapeHtml(formatTime(Date.now())) + '</span>' +
+          '<span class="chat-msg__ai-label">🤖 AI</span> ';
+        chatMessages.appendChild(llmStreamingMsg);
+        scrollChatToBottom();
+        break;
+
+      case "update":
+        // Streaming token — append to current message
+        if (llmStreamingMsg && output) {
+          // Rebuild the full text from accumulated output
+          const timeStr = escapeHtml(formatTime(Date.now()));
+          const tpsStr = tps ? ` <span class="chat-msg__tps">${Math.round(tps)} tok/s</span>` : "";
+          llmStreamingMsg.innerHTML =
+            '<span class="chat-msg__time">' + timeStr + '</span>' +
+            '<span class="chat-msg__ai-label">🤖 AI</span> ' +
+            escapeHtml(output) + tpsStr;
+          scrollChatToBottom();
+        }
+        break;
+
+      case "complete":
+        // Final response
+        if (llmStreamingMsg && output) {
+          const timeStr = escapeHtml(formatTime(Date.now()));
+          llmStreamingMsg.innerHTML =
+            '<span class="chat-msg__time">' + timeStr + '</span>' +
+            '<span class="chat-msg__ai-label">🤖 AI</span> ' +
+            escapeHtml(output);
+        }
+        llmStreamingMsg = null;
+        llmState = "ready";
+
+        // Add to conversation history
+        if (output) {
+          llmChatHistory.push({ role: "assistant", content: output });
+          // Keep history manageable
+          if (llmChatHistory.length > 20) {
+            llmChatHistory = llmChatHistory.slice(-20);
+          }
+        }
+        scrollChatToBottom();
+        break;
+
+      case "error":
+        appendSystemMessage(`❌ AI error: ${data || "unknown"}`);
+        llmState = "ready";
+        llmStreamingMsg = null;
+        break;
+    }
+  });
+
+  llmWorker.addEventListener("error", (err) => {
+    console.error("[LLM Worker] Error:", err);
+    appendSystemMessage("❌ AI worker failed to start. Your browser may not support this feature.");
+    llmState = "idle";
+    llmWorker = null;
+  });
+}
+
+function runAiGeneration(prompt) {
+  // Add user message to LLM history
+  llmChatHistory.push({ role: "user", content: prompt });
+
+  // Keep history manageable
+  if (llmChatHistory.length > 20) {
+    llmChatHistory = llmChatHistory.slice(-20);
+  }
+
+  // Send to worker — pass last several messages for context
+  const contextMessages = llmChatHistory.slice(-10);
+  llmWorker.postMessage({
+    type: "generate",
+    data: contextMessages,
+  });
+}
+
+let llmStatusMsg = null;
+
+function updateLlmStatusMessage(text) {
+  if (!llmStatusMsg || !llmStatusMsg.parentNode) {
+    llmStatusMsg = document.createElement("div");
+    llmStatusMsg.className = "chat-msg chat-msg--system";
+    chatMessages.appendChild(llmStatusMsg);
+  }
+  llmStatusMsg.textContent = text;
+  scrollChatToBottom();
+
+  // Auto-remove success messages after 3 seconds
+  if (text.startsWith("✅")) {
+    setTimeout(() => {
+      if (llmStatusMsg && llmStatusMsg.parentNode) {
+        llmStatusMsg.remove();
+      }
+    }, 3000);
+  }
 }
 
 function formatTime(timestamp) {
@@ -411,6 +611,230 @@ addSafe(document, "visibilitychange", () => {
 addSafe(window, "beforeunload", () => {
   if (chatWs) { try { chatWs.close(1000, "page unload"); } catch {} }
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION 7 — FrostBridge: Nordic realm transition
+// Called by Godot via JavaScriptBridge.eval("window.FrostBridge.travel(url)")
+// Plays a 2.5s particle wormhole, then navigates cross-origin.
+// ═══════════════════════════════════════════════════════════════════
+
+const FrostBridge = (() => {
+  const RUNE_CHARS = "ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛟᛞ";
+  const PHASE_AWAKENING_MS = 800;
+  const PHASE_CROSSING_MS = 1200;
+  const PHASE_FLASH_MS = 300;
+  const PARTICLE_COUNT = 180;
+
+  let overlay = null;
+  let canvas = null;
+  let ctx = null;
+  let particles = [];
+  let animFrame = 0;
+  let crossingStart = 0;
+  let canvasW = 0;
+  let canvasH = 0;
+
+  function buildOverlay() {
+    overlay = document.createElement("div");
+    overlay.id = "frostbridge";
+
+    const runeEl = document.createElement("div");
+    runeEl.className = "frostbridge__rune";
+    runeEl.textContent = "⟁";
+
+    const statusEl = document.createElement("div");
+    statusEl.className = "frostbridge__status";
+    statusEl.textContent = "Traversing the FrostBridge...";
+
+    canvas = document.createElement("canvas");
+    canvas.id = "frostbridge__canvas";
+
+    const flash = document.createElement("div");
+    flash.className = "frostbridge__flash";
+
+    overlay.appendChild(canvas);
+    overlay.appendChild(runeEl);
+    overlay.appendChild(statusEl);
+    overlay.appendChild(flash);
+    document.body.appendChild(overlay);
+  }
+
+  function resizeCanvas() {
+    if (!canvas) return;
+    canvasW = window.innerWidth;
+    canvasH = window.innerHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = canvasW * dpr;
+    canvas.height = canvasH * dpr;
+    canvas.style.width = canvasW + "px";
+    canvas.style.height = canvasH + "px";
+    ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+  }
+
+  function spawnParticle() {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 3 + Math.random() * 8;
+    const roll = Math.random();
+    let type, color, size;
+
+    if (roll < 0.15) {
+      type = "rune";
+      color = "#80DEEA";
+      size = 14 + Math.random() * 20;
+    } else if (roll < 0.22) {
+      type = "spark";
+      color = "#FF8C00";
+      size = 2 + Math.random() * 3;
+    } else {
+      type = "ice";
+      color = Math.random() > 0.4 ? "#00E5FF" : "#E0F7FA";
+      size = 2 + Math.random() * 5;
+    }
+
+    return {
+      x: canvasW / 2 + (Math.random() - 0.5) * 30,
+      y: canvasH / 2 + (Math.random() - 0.5) * 30,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size: size,
+      rotation: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.15,
+      type: type,
+      color: color,
+      rune: type === "rune"
+        ? RUNE_CHARS[Math.floor(Math.random() * RUNE_CHARS.length)]
+        : null,
+      life: 0,
+      maxLife: 50 + Math.random() * 60,
+      accel: 1.02 + Math.random() * 0.03,
+    };
+  }
+
+  function drawParticle(p) {
+    const alpha = Math.max(0, 1 - p.life / p.maxLife);
+
+    if (p.type === "rune") {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.globalAlpha = alpha * 0.85;
+      ctx.fillStyle = p.color;
+      ctx.font = p.size + 'px "Cinzel", serif';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 12;
+      ctx.fillText(p.rune, 0, 0);
+      ctx.restore();
+    } else if (p.type === "ice") {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 8;
+      const s = p.size;
+      ctx.beginPath();
+      ctx.moveTo(0, -s);
+      ctx.lineTo(s * 0.6, 0);
+      ctx.lineTo(0, s);
+      ctx.lineTo(-s * 0.6, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function animateCrossing() {
+    const now = performance.now();
+    const elapsed = now - crossingStart;
+
+    ctx.fillStyle = "rgba(5, 2, 0, 0.15)";
+    ctx.fillRect(0, 0, canvasW, canvasH);
+
+    if (elapsed < PHASE_CROSSING_MS * 0.8) {
+      const spawnCount = 4 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < spawnCount && particles.length < PARTICLE_COUNT; i++) {
+        particles.push(spawnParticle());
+      }
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= p.accel;
+      p.vy *= p.accel;
+      p.rotation += p.rotSpeed;
+      p.life++;
+
+      drawParticle(p);
+
+      if (p.life > p.maxLife ||
+          p.x < -50 || p.x > canvasW + 50 ||
+          p.y < -50 || p.y > canvasH + 50) {
+        particles.splice(i, 1);
+      }
+    }
+
+    if (elapsed < PHASE_CROSSING_MS) {
+      animFrame = requestAnimationFrame(animateCrossing);
+    }
+  }
+
+  async function travel(url) {
+    if (!url || typeof url !== "string") return;
+    console.log("[FrostBridge] Initiating travel to:", url);
+
+    if (!overlay) buildOverlay();
+    resizeCanvas();
+
+    // Phase 1: Awakening
+    overlay.classList.add("is-active");
+    await sleep(PHASE_AWAKENING_MS);
+
+    // Phase 2: Crossing
+    overlay.classList.add("is-crossing");
+    particles = [];
+    crossingStart = performance.now();
+    animFrame = requestAnimationFrame(animateCrossing);
+    await sleep(PHASE_CROSSING_MS);
+
+    // Phase 3: Flash + navigate
+    if (animFrame) cancelAnimationFrame(animFrame);
+    const flash = overlay.querySelector(".frostbridge__flash");
+    if (flash) flash.classList.add("is-flashing");
+    await sleep(PHASE_FLASH_MS);
+
+    window.location.href = url;
+  }
+
+  function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
+
+  window.addEventListener("resize", () => {
+    if (overlay && overlay.classList.contains("is-active")) {
+      resizeCanvas();
+    }
+  });
+
+  return { travel };
+})();
+
+window.FrostBridge = FrostBridge;
 
 // ── Init ────────────────────────────────────────────────────────────
 // Show version stamp on loading screen

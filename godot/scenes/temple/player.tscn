@@ -28,6 +28,8 @@ near = 0.03
 
 [node name="InteractionRay" type="RayCast3D" parent="Head"]
 target_position = Vector3(0, 0, -3)
+collide_with_areas = true
+collide_with_bodies = true
 
 [node name="CharacterInventorySystem" type="NodeInventories" parent="."]
 script = ExtResource("inv_sys")

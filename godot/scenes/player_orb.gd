@@ -60,3 +60,8 @@ func _process(delta: float) -> void:
 	var c := _mat.albedo_color
 	c.a = 0.5 + sin(_phase * 1.2) * 0.15
 	_mat.albedo_color = c
+
+	# Rotate toward reported yaw/pitch (shortest-angle interpolation)
+	var rot_alpha := 1.0 - exp(-interpolation_speed * delta)
+	rotation.y = lerp_angle(rotation.y, target_rot_y, rot_alpha)
+	rotation.x = lerp_angle(rotation.x, target_rot_x, rot_alpha)

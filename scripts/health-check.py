@@ -11,19 +11,14 @@ SERVICES = {
         "desc": "Main website and game portal"
     },
     "godot_game": {
-        "url": "https://coresapian.com/",
-        "name": "Godot Game Server",
-        "desc": "Multiplayer server"
+        "url": "http://localhost:8082/health",
+        "name": "Godot Multiplayer Relay",
+        "desc": "Real-time player position relay"
     },
     "anonymous_chat": {
         "url": "https://coresapian.com/ws/chat",
         "name": "Anonymous Chat",
         "desc": "Global chat relay"
-    },
-    "multiplayer_orbs": {
-        "url": "http://localhost:8082/health",
-        "name": "Multiplayer Orbs",
-        "desc": "Real-time player position relay"
     },
     "starpark": {
         "url": "https://starpark.app/",

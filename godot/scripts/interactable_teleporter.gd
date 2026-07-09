@@ -90,8 +90,10 @@ func _do_teleport() -> void:
 	print("[Teleporter] %s → %s" % [name, destination_url])
 
 	if OS.has_feature("web"):
+		# JSON.stringify safely escapes destination_url before injecting into JS.
+		var safe_url := JSON.stringify(destination_url)
 		JavaScriptBridge.eval(
-			"window.FrostBridge.travel('%s');" % destination_url, true
+			"window.FrostBridge.travel(%s);" % safe_url, true
 		)
 	else:
 		print("[Teleporter] (Non-web: would FrostBridge to %s)" % destination_url)

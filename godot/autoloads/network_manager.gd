@@ -69,10 +69,11 @@ func join_game(host: String = DEFAULT_SERVER_IP, port: int = DEFAULT_PORT, name:
 
 ## Start a dedicated (headless) server — no client, no rendering.
 ## Uses WebSocket transport so browser clients can connect via wss:// through nginx.
-func start_dedicated_server(port: int = DEFAULT_PORT) -> void:
+func start_dedicated_server(port: int = DEFAULT_PORT, bind_host: String = "127.0.0.1") -> void:
 	var ws_peer := WebSocketMultiplayerPeer.new()
-	# No TLS here — Cloudflare/nginx terminates TLS and forwards plain WS.
-	var err := ws_peer.create_server(port, "0.0.0.0")
+	# Bind to localhost only — Cloudflare/nginx on the same LXC terminates TLS and
+	# proxies to this port. LAN/Tailscale cannot reach it directly.
+	var err := ws_peer.create_server(port, bind_host)
 	if err != OK:
 		push_error("Dedicated WS server failed to bind port %d: %s" % [port, err])
 		return

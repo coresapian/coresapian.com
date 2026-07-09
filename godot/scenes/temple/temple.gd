@@ -21,6 +21,18 @@ func _ready() -> void:
 	_generate_temple_collision()
 	_connect_kill_plane()
 
+	# Preload critical resources in the background before spawning entities.
+	var zone_paths: Array[String] = [
+		"res://scenes/temple/player.tscn",
+		"res://scenes/ui/inventory_ui.tscn",
+		"res://scenes/interactables/rune_stone.tscn",
+		"res://scenes/interactables/water_orb.tscn",
+		"res://scenes/items/loot_chest.tscn",
+	]
+	if ResourcePreloader.is_ready() or ResourcePreloader.get_progress() == 0.0:
+		ResourcePreloader.preload_zone(zone_paths)
+		await ResourcePreloader.zone_ready
+
 	# Defer spawning so physics processes the trimesh collision first
 	_spawn_entities.call_deferred()
 
@@ -29,16 +41,19 @@ func _spawn_entities() -> void:
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
 	# Spawn loot chest (needs floor collision)
-	var chest = preload("res://scenes/items/loot_chest.tscn").instantiate()
+	var chest_scene := ResourcePreloader.get_packed_scene("res://scenes/items/loot_chest.tscn")
+	var chest = chest_scene.instantiate() if chest_scene else preload("res://scenes/items/loot_chest.tscn").instantiate()
 	chest.position = _find_floor_below(Vector3(3, 5, 0))
 	add_child(chest)
 
 	# Spawn teleporters
-	var rune_stone = RUNE_STONE_SCENE.instantiate()
+	var rune_scene := ResourcePreloader.get_packed_scene("res://scenes/interactables/rune_stone.tscn")
+	var rune_stone = rune_scene.instantiate() if rune_scene else RUNE_STONE_SCENE.instantiate()
 	rune_stone.position = _find_floor_below(Vector3(-5, 5, 3))
 	add_child(rune_stone)
 
-	var water_orb = WATER_ORB_SCENE.instantiate()
+	var orb_scene := ResourcePreloader.get_packed_scene("res://scenes/interactables/water_orb.tscn")
+	var water_orb = orb_scene.instantiate() if orb_scene else WATER_ORB_SCENE.instantiate()
 	water_orb.position = _find_floor_below(Vector3(5, 5, 3))
 	add_child(water_orb)
 

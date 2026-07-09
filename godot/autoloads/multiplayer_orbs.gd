@@ -43,15 +43,19 @@ func _ready() -> void:
 
 	if server_url == "":
 		if OS.has_feature("web"):
-			var js_url: Variant = JavaScriptBridge.eval("window.__MP_SERVER_URL || ''")
-			if js_url != null and js_url != "":
-				server_url = str(js_url)
+			# One eval returns both the explicit override and the current hostname.
+			var info: Variant = JavaScriptBridge.eval(
+				"({ url: window.__MP_SERVER_URL || '', host: location.hostname })", true
+			)
+			if info is Dictionary:
+				var js_url := str(info.get("url", ""))
+				if js_url != "":
+					server_url = js_url
+				else:
+					var host := str(info.get("host", "coresapian.com"))
+					server_url = "wss://%s/ws/mp" % host if host != "" else "ws://localhost:8082"
 			else:
-				var eval_host = JavaScriptBridge.eval("location.hostname", true)
-				var host := "coresapian.com"
-				if eval_host != null:
-					host = str(eval_host)
-				server_url = "wss://%s/ws/mp" % host if host != "" else "ws://localhost:8082"
+				server_url = "wss://coresapian.com/ws/mp"
 		else:
 			server_url = "ws://localhost:8082"
 
@@ -90,16 +94,33 @@ func _process(delta: float) -> void:
 	if _send_timer >= _send_interval:
 		_send_timer = 0.0
 		_send_position()
-
 	var now := Time.get_ticks_msec() / 1000.0
 	var stale: Array[String] = []
+
 
 	for id in _remote_players:
 		var entry: Dictionary = _remote_players[id]
 		var orb: Node3D = entry["orb"]
-		orb.target_position = entry["target_pos"]
-		orb.target_rot_y = entry["target_rot_y"]
-		orb.target_rot_x = entry["target_rot_x"]
+		if orb == null or not is_instance_valid(orb):
+			continue
+		# Snapshot interpolation: blend between last two received states
+		var blend := entry.get("_blend", 0.0)
+		var inv_delta := 1.0 / max(0.001, _send_interval)
+		blend += delta * inv_delta
+		blend = clampf(blend, 0.0, 1.0)
+		entry["_blend"] = blend
+		var prev_pos: Vector3 = entry.get("prev_pos", Vector3.ZERO)
+		var prev_ry: float = entry.get("prev_rot_y", 0.0)
+		var prev_rx: float = entry.get("prev_rot_x", 0.0)
+		var target_pos: Vector3 = entry.get("target_pos", Vector3.ZERO)
+		var target_ry: float = entry.get("target_rot_y", 0.0)
+		var target_rx: float = entry.get("target_rot_x", 0.0)
+		var pos := prev_pos.lerp(target_pos, blend)
+		var ry := lerp_angle(prev_ry, target_ry, blend)
+		var rx := lerp_angle(prev_rx, target_rx, blend)
+		orb.target_position = pos
+		orb.target_rot_y = ry
+		orb.target_rot_x = rx
 		if now - entry["last_update"] > _STALE_TIMEOUT:
 			stale.append(id)
 
@@ -197,6 +218,12 @@ func _on_packet_received(json_string: String) -> void:
 			if not _remote_players.has(id):
 				return
 			var entry: Dictionary = _remote_players[id]
+			var prev_pos: Vector3 = entry.get("target_pos", Vector3.ZERO)
+			var prev_ry: float = entry.get("target_rot_y", 0.0)
+			var prev_rx: float = entry.get("target_rot_x", 0.0)
+			entry["prev_pos"] = prev_pos
+			entry["prev_rot_y"] = prev_ry
+			entry["prev_rot_x"] = prev_rx
 			entry["target_pos"] = Vector3(
 				float(msg.get("x", 0.0)),
 				float(msg.get("y", 0.0)),
@@ -205,6 +232,7 @@ func _on_packet_received(json_string: String) -> void:
 			entry["target_rot_y"] = float(msg.get("ry", 0.0))
 			entry["target_rot_x"] = float(msg.get("rx", 0.0))
 			entry["last_update"] = Time.get_ticks_msec() / 1000.0
+			entry["_blend"] = 0.0
 
 
 # ── Orb Management ───────────────────────────────────────────────────

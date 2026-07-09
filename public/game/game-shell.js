@@ -171,8 +171,7 @@ function connectChat() {
     try {
       const data = JSON.parse(event.data);
       if (Array.isArray(data)) {
-        chatMessages.replaceChildren();
-        for (const msg of data) appendChatMessage(msg);
+        ChatVirtualList.replaceAll(data);
         scrollChatToBottom();
       } else if (data && typeof data.text === "string") {
         appendChatMessage(data);
@@ -315,9 +314,16 @@ function initLlmWorker() {
         llmState = "generating";
         llmStreamingMsg = document.createElement("div");
         llmStreamingMsg.className = "chat-msg chat-msg--ai";
-        llmStreamingMsg.innerHTML =
-          '<span class="chat-msg__time">' + escapeHtml(formatTime(Date.now())) + '</span>' +
-          '<span class="chat-msg__ai-label">🤖 AI</span> ';
+        // Static structure with named child nodes so updates only mutate textContent.
+        llmStreamingMsg.appendChild(Object.assign(document.createElement("span"), { className: "chat-msg__time", textContent: formatTime(Date.now()) }));
+        llmStreamingMsg.appendChild(document.createTextNode(" "));
+        llmStreamingMsg.appendChild(Object.assign(document.createElement("span"), { className: "chat-msg__ai-label", textContent: "🤖 AI" }));
+        llmStreamingMsg.appendChild(document.createTextNode(" "));
+        llmStreamingMsg._contentSpan = Object.assign(document.createElement("span"), { className: "chat-msg__content" });
+        llmStreamingMsg.appendChild(llmStreamingMsg._contentSpan);
+        llmStreamingMsg._tpsSpan = Object.assign(document.createElement("span"), { className: "chat-msg__tps" });
+        llmStreamingMsg._tpsSpan.hidden = true;
+        llmStreamingMsg.appendChild(llmStreamingMsg._tpsSpan);
         chatMessages.appendChild(llmStreamingMsg);
         scrollChatToBottom();
         break;
@@ -325,13 +331,13 @@ function initLlmWorker() {
       case "update":
         // Streaming token — append to current message
         if (llmStreamingMsg && output) {
-          // Rebuild the full text from accumulated output
-          const timeStr = escapeHtml(formatTime(Date.now()));
-          const tpsStr = tps ? ` <span class="chat-msg__tps">${Math.round(tps)} tok/s</span>` : "";
-          llmStreamingMsg.innerHTML =
-            '<span class="chat-msg__time">' + timeStr + '</span>' +
-            '<span class="chat-msg__ai-label">🤖 AI</span> ' +
-            escapeHtml(output) + tpsStr;
+          llmStreamingMsg._contentSpan.textContent = output;
+          if (tps) {
+            llmStreamingMsg._tpsSpan.textContent = ` ${Math.round(tps)} tok/s`;
+            llmStreamingMsg._tpsSpan.hidden = false;
+          } else {
+            llmStreamingMsg._tpsSpan.hidden = true;
+          }
           scrollChatToBottom();
         }
         break;
@@ -339,11 +345,8 @@ function initLlmWorker() {
       case "complete":
         // Final response
         if (llmStreamingMsg && output) {
-          const timeStr = escapeHtml(formatTime(Date.now()));
-          llmStreamingMsg.innerHTML =
-            '<span class="chat-msg__time">' + timeStr + '</span>' +
-            '<span class="chat-msg__ai-label">🤖 AI</span> ' +
-            escapeHtml(output);
+          llmStreamingMsg._contentSpan.textContent = output;
+          llmStreamingMsg._tpsSpan.hidden = true;
         }
         llmStreamingMsg = null;
         llmState = "ready";
@@ -426,15 +429,105 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function appendChatMessage(msg) {
-  const div = document.createElement("div");
-  div.className = "chat-msg";
-  const time = msg.timestamp ? escapeHtml(formatTime(msg.timestamp)) : "";
-  div.innerHTML = `<span class="chat-msg__time">${time}</span>${escapeHtml(msg.text)}`;
-  chatMessages.appendChild(div);
-  while (chatMessages.children.length > 200) {
-    chatMessages.removeChild(chatMessages.firstChild);
+const ChatVirtualList = (function () {
+  const buffer = [];          // all message objects
+  const pool = [];              // recycled DOM nodes
+  const renderWindow = 15;    // max nodes visible at once
+  let heightEstimate = 0;
+  let scrollTop = 0;
+  let listHeight = 0;
+  let paddingTop = 0;
+  let paddingBottom = 0;
+
+  function createNode() {
+    const div = document.createElement("div");
+    div.className = "chat-msg";
+    return div;
   }
+
+  function getNode() {
+    return pool.length ? pool.pop() : createNode();
+  }
+
+  function recycle(node) {
+    node.remove();
+    node.textContent = "";
+    node.removeAttribute("data-msg-id");
+    pool.push(node);
+  }
+
+  function renderModel() {
+    const total = buffer.length;
+    if (!total) return;
+    const avg = listHeight / Math.max(1, chatMessages.children.length || renderWindow);
+    const rowH = avg > 0 ? avg : 24;
+    heightEstimate = total * rowH;
+    const startIndex = Math.max(0, Math.floor(scrollTop / rowH) - 2);
+    const endIndex = Math.min(total, startIndex + renderWindow + 4);
+    paddingTop = startIndex * rowH;
+    paddingBottom = Math.max(0, (total - endIndex) * rowH);
+    chatMessages.style.paddingTop = paddingTop + "px";
+    chatMessages.style.paddingBottom = paddingBottom + "px";
+
+    const existing = Array.from(chatMessages.children).filter(n => n.classList.contains("chat-msg"));
+    const needed = endIndex - startIndex;
+    // Recycle excess nodes
+    while (existing.length > needed) recycle(existing.pop());
+    // Ensure enough nodes
+    while (existing.length < needed) {
+      const node = getNode();
+      chatMessages.appendChild(node);
+      existing.push(node);
+    }
+    for (let i = 0; i < needed; i++) {
+      const msg = buffer[startIndex + i];
+      const node = existing[i];
+      const msgId = msg.id || (msg.timestamp + msg.text);
+      if (node.dataset.msgId === msgId) continue;
+      node.dataset.msgId = msgId;
+      const time = msg.timestamp ? escapeHtml(formatTime(msg.timestamp)) : "";
+      node.innerHTML = `<span class="chat-msg__time">${time}</span>${escapeHtml(msg.text)}`;
+    }
+  }
+
+  function append(msg) {
+    const msgId = msg.id || (msg.timestamp + msg.text);
+    if (buffer.find(m => (m.id || (m.timestamp + m.text)) === msgId)) return;
+    buffer.push(msg);
+    if (buffer.length > 200) buffer.shift();
+    renderModel();
+  }
+
+  function replaceAll(msgs) {
+    buffer.length = 0;
+    for (const msg of msgs) buffer.push(msg);
+    if (buffer.length > 200) buffer.splice(0, buffer.length - 200);
+    renderModel();
+  }
+
+  function pruneIfClosed() {
+    if (!chatOpened && buffer.length > 50) {
+      buffer.splice(0, buffer.length - 50);
+      renderModel();
+    }
+  }
+
+  function onScroll() {
+    scrollTop = chatMessages.scrollTop;
+    listHeight = chatMessages.scrollHeight;
+    renderModel();
+  }
+
+  function init() {
+    chatMessages.addEventListener("scroll", onScroll, { passive: true });
+    listHeight = chatMessages.scrollHeight;
+  }
+
+  return { append, replaceAll, pruneIfClosed, init, renderModel };
+})();
+
+function appendChatMessage(msg) {
+  ChatVirtualList.append(msg);
 }
 
 function appendSystemMessage(text) {
@@ -586,6 +679,7 @@ if (window.webkitAudioContext && window.webkitAudioContext !== window.AudioConte
 }
 
 // Chat
+ChatVirtualList.init();
 addSafe(chatToggle, "click", toggleChat);
 addSafe(chatClose, "click", toggleChat);
 addSafe(chatInput, "keydown", (e) => {

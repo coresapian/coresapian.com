@@ -104,8 +104,8 @@ func _process(delta: float) -> void:
 		if orb == null or not is_instance_valid(orb):
 			continue
 		# Snapshot interpolation: blend between last two received states
-		var blend := entry.get("_blend", 0.0)
-		var inv_delta := 1.0 / max(0.001, _send_interval)
+		var blend: float = entry.get("_blend", 0.0)
+		var inv_delta: float = 1.0 / max(0.001, _send_interval)
 		blend += delta * inv_delta
 		blend = clampf(blend, 0.0, 1.0)
 		entry["_blend"] = blend

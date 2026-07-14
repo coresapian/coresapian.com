@@ -54,8 +54,7 @@ func _process(_delta: float) -> void:
 				_loading.erase(path)
 				_loaded_count += 1
 				_load_next()
-			ResourceLoader.ThreadLoadStatus.THREAD_LOAD_FAILED,
-			ResourceLoader.ThreadLoadStatus.THREAD_LOAD_INVALID_RESOURCE:
+			ResourceLoader.ThreadLoadStatus.THREAD_LOAD_FAILED, ResourceLoader.ThreadLoadStatus.THREAD_LOAD_INVALID_RESOURCE:
 				push_warning("[ResourcePreloader] Failed to load: %s" % path)
 				_loading.erase(path)
 				_loaded_count += 1

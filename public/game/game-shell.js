@@ -568,6 +568,7 @@ function toggleChat() {
     setTimeout(() => chatInput?.focus(), 300);
   } else {
     chatPanel.classList.add("is-hidden");
+    ChatVirtualList.pruneIfClosed();
   }
 }
 

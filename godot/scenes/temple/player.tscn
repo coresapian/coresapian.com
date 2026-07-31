@@ -38,7 +38,7 @@ equipment_inventory_path = NodePath("EquipmentInventory")
 hotbar_path = NodePath("Hotbar")
 main_station_path = NodePath("CraftStation")
 interactor_path = NodePath("Interactor")
-change_mouse_state = true
+change_mouse_state = false
 check_inputs = true
 
 [node name="Inventory" type="GridInventory" parent="CharacterInventorySystem"]

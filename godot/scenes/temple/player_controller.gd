@@ -1,7 +1,11 @@
 extends CharacterBody3D
 
-## Coresapian Player Controller — first-person movement + inventory toggle.
-## Web-compatible pointer lock. Touch joystick support.
+## Coresapian Player Controller — standard FPS controls.
+##
+## Mouse look works at all times when pointer is captured (no click-and-hold).
+## Web: first click on canvas captures the pointer.
+## ESC toggles pointer lock on/off.
+## Tab (inventory) releases pointer so the UI is usable.
 
 @export var walk_speed: float = 4.0
 @export var sprint_speed: float = 6.5
@@ -34,23 +38,34 @@ func _ready() -> void:
 		inventory_system.raycast = interaction_ray
 		inventory_system.camera_3d = camera
 		_setup_inventory_authority()
+		# Listen for inventory open/close so we can release/recapture the pointer
+		if not _is_touchscreen:
+			inventory_system.opened_inventory.connect(_on_inventory_opened)
+			inventory_system.closed_inventory.connect(_on_inventory_closed)
+			inventory_system.opened_station.connect(_on_inventory_opened)
+			inventory_system.closed_station.connect(_on_inventory_closed)
 
-	# On web, pointer lock only works from user gestures.
-	# The inventory base class _ready() sets CAPTURED prematurely — override it.
-	if _is_web or _is_touchscreen:
+	# Initial mouse mode depends on platform
+	if _is_web and not _is_touchscreen:
+		# Web: start visible, user clicks to capture
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	elif _is_touchscreen:
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	else:
+		# Native: capture immediately
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
+
+# ── Input ──────────────────────────────────────────────────────────
+
 func _input(event: InputEvent) -> void:
-	# Web desktop: click to capture pointer
+	# Web desktop: left click captures the pointer (must be in user gesture)
 	if _is_web and not _is_touchscreen \
 			and event is InputEventMouseButton \
 			and event.pressed \
 			and event.button_index == MOUSE_BUTTON_LEFT:
-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-		get_viewport().set_input_as_handled()
+		if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		return
 
 	# Touch: right-half drag = camera look
@@ -70,18 +85,43 @@ func _input(event: InputEvent) -> void:
 		head.rotation.x = _pitch
 		get_viewport().set_input_as_handled()
 
+
 func _unhandled_input(event: InputEvent) -> void:
-	if _is_touchscreen:
-		return
-	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+	# Mouse look — only processes when pointer is captured.
+	# No click-and-hold needed: captured pointer sends relative motion at all times.
+	if event is InputEventMouseMotion \
+			and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * mouse_sensitivity)
 		_pitch = clampf(_pitch - event.relative.y * mouse_sensitivity, deg_to_rad(-75), deg_to_rad(75))
 		head.rotation.x = _pitch
+
+	# ESC toggles pointer lock on/off
+	# On web: ESC only releases (never re-captures — click to re-capture)
 	if event.is_action_pressed("ui_cancel"):
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-		elif not _is_web:
+		elif not _is_web and not _is_touchscreen:
+			# Native desktop: ESC toggles both ways
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+
+# ── Inventory open/close → mouse mode ─────────────────────────────
+
+func _on_inventory_opened(_inventory = null) -> void:
+	# Release pointer so the user can interact with the UI
+	if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+
+func _on_inventory_closed(_inventory = null) -> void:
+	# Re-capture pointer when closing inventory.
+	# On web: user must click to re-capture (browser security).
+	if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED \
+			and not _is_web and not _is_touchscreen:
+		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+
+# ── Movement ───────────────────────────────────────────────────────
 
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
@@ -96,10 +136,12 @@ func _physics_process(delta: float) -> void:
 	velocity.z = move_dir.z * speed if move_dir else move_toward(velocity.z, 0.0, speed)
 	move_and_slide()
 
+
+# ── Inventory authority ────────────────────────────────────────────
+
 func _setup_inventory_authority() -> void:
 	var peer_id := multiplayer.get_unique_id()
 	set_multiplayer_authority(peer_id)
-	# Server owns all inventory sync nodes
 	var sync_paths := [
 		"Inventory/SyncInventory",
 		"EquipmentInventory/SyncInventory",
@@ -111,6 +153,9 @@ func _setup_inventory_authority() -> void:
 		if node:
 			node.set_multiplayer_authority(1)
 	inventory_system.set_multiplayer_authority(1)
+
+
+# ── Input map ──────────────────────────────────────────────────────
 
 func _ensure_input_map() -> void:
 	var bindings := {

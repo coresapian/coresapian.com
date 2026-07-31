@@ -163,16 +163,6 @@ body {
     0 0 18px rgba(255, 140, 0, 0.2);
 }
 
-/* Subtitle */
-.loader__subtitle {
-  font-family: "Share Tech Mono", monospace;
-  font-size: clamp(0.75rem, 2.5vw, 0.95rem);
-  color: var(--amber-dim);
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  margin-top: -0.4rem;
-}
-
 /* Progress bar */
 .loader__progress-wrap {
   width: 100%;
@@ -223,14 +213,6 @@ body {
   letter-spacing: 0.12em;
   font-style: italic;
   min-height: 1.2em;
-}
-
-/* Version stamp */
-.loader__version {
-  font-size: clamp(0.55rem, 1.6vw, 0.7rem);
-  color: rgba(255, 140, 0, 0.18);
-  letter-spacing: 0.08em;
-  margin-top: 0.3rem;
 }
 
 /* Error state */

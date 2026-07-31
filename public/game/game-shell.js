@@ -28,7 +28,6 @@ const chatSend = document.getElementById("chat-send");
 const chatClose = document.getElementById("chat-close");
 const chatStatusDot = document.getElementById("chat-status-dot");
 const chatBadge = document.getElementById("chat-badge");
-const loaderVersion = document.getElementById("loader-version");
 const GODOT_CONFIG = window.__GODOT_CONFIG;
 const THREADS_ENABLED = false;
 const PROGRESS_STALL_TIMEOUT_MS = 120_000;
@@ -366,6 +365,7 @@ function initLlmWorker() {
         appendSystemMessage(`❌ AI error: ${data || "unknown"}`);
         llmState = "ready";
         llmStreamingMsg = null;
+        llmPendingPrompt = null; // clear any queued prompt
         break;
     }
   });
@@ -485,8 +485,13 @@ const ChatVirtualList = (function () {
       const msgId = msg.id || (msg.timestamp + msg.text);
       if (node.dataset.msgId === msgId) continue;
       node.dataset.msgId = msgId;
-      const time = msg.timestamp ? escapeHtml(formatTime(msg.timestamp)) : "";
-      node.innerHTML = `<span class="chat-msg__time">${time}</span>${escapeHtml(msg.text)}`;
+      // Build with DOM methods to avoid innerHTML entirely
+      node.textContent = "";
+      const timeSpan = document.createElement("span");
+      timeSpan.className = "chat-msg__time";
+      timeSpan.textContent = msg.timestamp ? formatTime(msg.timestamp) : "";
+      node.appendChild(timeSpan);
+      node.appendChild(document.createTextNode(msg.text));
     }
   }
 
@@ -931,9 +936,4 @@ const FrostBridge = (() => {
 window.FrostBridge = FrostBridge;
 
 // ── Init ────────────────────────────────────────────────────────────
-// Show version stamp on loading screen
-if (loaderVersion) {
-  const v = loaderVersion.getAttribute("data-version") || "";
-  if (v) loaderVersion.textContent = v;
-}
 startGame();

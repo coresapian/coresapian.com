@@ -81,10 +81,8 @@ func _on_peer_connected(peer_id: int) -> void:
 func _on_peer_disconnected(peer_id: int) -> void:
 	# Never free the local player — it holds the camera and must persist
 	# across server disconnects/reconnects.
-	if peer_id == 1 and players.has(1):
-		var p = players[1]
-		if p.name == "LocalPlayer":
-			return
+	if peer_id == multiplayer.get_unique_id():
+		return
 	if players.has(peer_id):
 		players[peer_id].queue_free()
 		players.erase(peer_id)

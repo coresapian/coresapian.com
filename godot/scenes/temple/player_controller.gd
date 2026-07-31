@@ -26,6 +26,7 @@ var _pitch: float = 0.0
 var _is_web: bool = false
 var _is_touchscreen: bool = false
 var _touch_look_index: int = -1
+var _inventory_just_closed: bool = false
 
 func _ready() -> void:
 	_is_web = OS.has_feature("web")
@@ -98,7 +99,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	# ESC toggles pointer lock on/off
 	# On web: ESC only releases (never re-captures — click to re-capture)
 	if event.is_action_pressed("ui_cancel"):
-		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+		# If inventory was just closed this frame, don't toggle — the
+		# _on_inventory_closed handler already set the correct mode.
+		if _inventory_just_closed:
+			_inventory_just_closed = false
+		elif Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		elif not _is_web and not _is_touchscreen:
 			# Native desktop: ESC toggles both ways
@@ -118,6 +123,7 @@ func _on_inventory_closed(_inventory = null) -> void:
 	# On web: user must click to re-capture (browser security).
 	if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED \
 			and not _is_web and not _is_touchscreen:
+		_inventory_just_closed = true
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 
@@ -168,6 +174,7 @@ func _ensure_input_map() -> void:
 		"toggle_inventory": [KEY_TAB],
 		"toggle_craft_panel": [KEY_C],
 		"interact": [KEY_E],
+		"escape": [KEY_ESCAPE],
 	}
 	for action in bindings:
 		if not InputMap.has_action(action):

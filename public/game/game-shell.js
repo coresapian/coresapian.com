@@ -209,7 +209,7 @@ function sendChatMessage() {
 
   // Check for @ai mention — route to local LLM instead of chat server
   if (/^@ai\b/i.test(text) || /\s@ai\b/i.test(text)) {
-    const prompt = text.replace(/^@ai\s*/i, "").replace(/\s@ai\s*$/i, "").trim();
+    const prompt = text.replace(/\s*@ai\s*/gi, " ").trim();
     if (prompt) {
       handleAiMessage(prompt);
       chatInput.value = "";

@@ -67,6 +67,7 @@ craft_station = NodePath("..")
 
 [node name="Interactor" type="NodeInventories" parent="CharacterInventorySystem"]
 script = ExtResource("interactor")
+node_base_to_interactions = NodePath("..")
 
 [node name="Hotbar" type="Hotbar" parent="CharacterInventorySystem"]
 inventory = NodePath("../Inventory")

@@ -469,7 +469,7 @@ const ChatVirtualList = (function () {
     chatMessages.style.paddingTop = paddingTop + "px";
     chatMessages.style.paddingBottom = paddingBottom + "px";
 
-    const existing = Array.from(chatMessages.children).filter(n => n.classList.contains("chat-msg"));
+    const existing = Array.from(chatMessages.children).filter(n => n.classList.contains("chat-msg") && !n.classList.contains("chat-msg--system"));
     const needed = endIndex - startIndex;
     // Recycle excess nodes
     while (existing.length > needed) recycle(existing.pop());

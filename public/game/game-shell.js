@@ -469,7 +469,7 @@ const ChatVirtualList = (function () {
     chatMessages.style.paddingTop = paddingTop + "px";
     chatMessages.style.paddingBottom = paddingBottom + "px";
 
-    const existing = Array.from(chatMessages.children).filter(n => n.classList.contains("chat-msg") && !n.classList.contains("chat-msg--system"));
+    const existing = Array.from(chatMessages.children).filter(n => n.classList.contains("chat-msg") && !n.classList.contains("chat-msg--system") && !n.classList.contains("chat-msg--ai"));
     const needed = endIndex - startIndex;
     // Recycle excess nodes
     while (existing.length > needed) recycle(existing.pop());
@@ -769,7 +769,7 @@ const FrostBridge = (() => {
     canvas.style.width = canvasW + "px";
     canvas.style.height = canvasH + "px";
     ctx = canvas.getContext("2d");
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   function spawnParticle() {

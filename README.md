@@ -34,6 +34,16 @@ exploration with glowing orbs.
 | 2 | Anonymous Chat | Node.js + `ws` | 3001 | `coresapian-anonymous-chat.service` | Real-time anonymous WebSocket chat |
 | 3 | Multiplayer Orbs | Node.js + `ws` | 8082 | `coresapian-mp.service` | Real-time player position relay |
 | 4 | Health Check | Python 3 + cron | — | `coresapian-health-check.timer` | Status page monitoring |
+| 5 | Godot Dedicated Server | Godot 4.6 headless | 8083 | `coresapian-godot.service` | High-level multiplayer relay (bare PCK) |
+
+### Dedicated Server Mode
+
+The server binary (`exports/coresapian-server.x86_64`, exported via `scripts/export_godot_all.sh`) runs as a bare multiplayer relay on LXC 103:
+
+- **Activation**: env var `CORESAPIAN_SERVER_PORT=8083` (systemd unit `coresapian-godot.service`, `WorkingDirectory=/opt/coresapian-godot-server`). When set, `godot/scenes/main.gd` calls `NetworkManager.start_dedicated_server(port)` and skips the temple scene entirely.
+- **Bare relay PCK**: the server PCK is exported without the temple scene — no inventory nodes.
+- **ExpressoBits Inventory constraint (SEGV)**: the `inventory-system` GDExtension (v2.13.0) SEGVs on Godot 4.6 headless Linux when inventory nodes are instantiated. Web (wasm) and desktop builds are unaffected. The dedicated server must therefore NEVER load scenes containing inventory nodes — the bare-relay PCK is the contract. Do not add inventory nodes to the server export preset.
+- **Always-online clients**: web clients spawn immediately on load and connect to the relay in the background; on failure a "Connecting to server..." banner shows and auto-retries every 3 s. There is no offline fallback mode.
 
 ### nginx Routes
 

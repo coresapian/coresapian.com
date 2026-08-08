@@ -327,6 +327,23 @@ for url in "${VERIFY_URLS[@]}"; do
     else
         ok "  $url → 200"
     fi
+    # Size-vs-fileSizes check: catch truncated SCP uploads that still 200
+    case "$url" in
+        *"index-${PCK_HASH}.pck")      expected=$PCK_SIZE ;;
+        *"index-${WASM_HASH}.wasm")    expected=$WASM_SIZE ;;
+        *"index-${WASM_HASH}.side.wasm") expected=$(size_file "$PROJECT_ROOT/public/game/index.side.wasm") ;;
+        *) continue ;;
+    esac
+    served=$(curl -sI "$url" 2>/dev/null | grep -i '^content-length:' | tr -d '\r' | awk '{print $2}')
+    if [ -z "$served" ]; then
+        err "SIZE UNKNOWN: $url — no Content-Length header"
+        VERIFY_FAILED=1
+    elif [ "$served" != "$expected" ]; then
+        err "SIZE MISMATCH: $url → served $served bytes, expected $expected bytes"
+        VERIFY_FAILED=1
+    else
+        ok "  size  $url → $served bytes ✓"
+    fi
 done
 
 if [ $VERIFY_FAILED -ne 0 ]; then

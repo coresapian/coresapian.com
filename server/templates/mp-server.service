@@ -1,0 +1,43 @@
+# {{SERVICE_NAME}} — unified multiplayer + chat relay (v3)
+#
+# Install to: /etc/systemd/system/{{SERVICE_NAME}}
+# Rendered by scripts/deploy-servers.sh — do not edit on the LXC.
+
+[Unit]
+Description={{SITE_NAME}} unified relay server (multiplayer + chat)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/{{APP_DIR}}
+ExecStart=/usr/bin/node mp_server.js
+Restart=always
+RestartSec=5
+
+# Environment — PORT and friends, plus chat persistence dir.
+Environment=PORT={{MP_PORT}}
+Environment=MP_BIND_HOST=127.0.0.1
+Environment=MP_ALLOWED_ORIGINS={{ALLOWED_ORIGINS}}
+Environment=CHAT_DATA_DIR=/data
+
+# Sandboxing (hardened baseline shared by all three relay servers).
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+
+# /data is writable (chat history persistence), everything else read-only.
+ReadWritePaths=/data
+
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

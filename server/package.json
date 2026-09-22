@@ -1,10 +1,11 @@
 {
-  "name": "coresapian-anonymous-chat",
-  "version": "1.0.0",
-  "description": "Anonymous WebSocket chat server for Coresapian 3D lab",
-  "main": "anonymous_chat_server.js",
+  "name": "coresapian-relay",
+  "version": "3.0.0",
+  "description": "Unified multiplayer + chat relay server for Coresapian",
+  "type": "module",
+  "main": "mp_server.js",
   "scripts": {
-    "start": "node anonymous_chat_server.js"
+    "start": "node mp_server.js"
   },
   "dependencies": {
     "ws": "^8.18.0"

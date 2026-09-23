@@ -95,6 +95,22 @@ if grep -q "proxy_pass http://127.0.0.1:3001" /etc/nginx/sites-available/coresap
     nginx -t && systemctl reload nginx
     echo "  nginx: /ws/chat now proxies to merged relay :8082"
 fi
+# Ensure exact-match /ws proxies to the merged relay (game client endpoint).
+# NOTE: the rendered snippet in /etc/nginx/snippets/ is NOT included by the
+# site conf, so install this location directly. Idempotent via the grep guard;
+# inserted before the location /ws/mp block (one per server block).
+SITE_CONF="/etc/nginx/sites-available/coresapian"
+if ! grep -q "location = /ws" "\$SITE_CONF" 2>/dev/null; then
+    sed -i "s|    location /ws/mp {|    # Game client WS: exact-match /ws -> unified relay\\n    location = /ws {\\n        proxy_pass http://127.0.0.1:8082;\\n        proxy_http_version 1.1;\\n        proxy_set_header Upgrade \\\$http_upgrade;\\n        proxy_set_header Connection upgrade;\\n        proxy_set_header Host \\\$host;\\n        proxy_set_header X-Real-IP \\\$remote_addr;\\n        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;\\n        proxy_set_header X-Forwarded-Proto \\\$scheme;\\n        proxy_read_timeout 3600s;\\n        proxy_send_timeout 3600s;\\n    }\\n    location /ws/mp {|" "\$SITE_CONF"
+    grep -q "location = /ws" "\$SITE_CONF" 2>/dev/null || { echo "  ERROR: anchor location /ws/mp not found in site conf" >&2; exit 1; }
+    if nginx -t 2>/dev/null; then
+        systemctl reload nginx
+        echo "  nginx: exact-match /ws now proxies to merged relay :8082"
+    else
+        echo "  ✗ nginx -t FAILED after adding location = /ws" >&2
+        exit 1
+    fi
+fi
 # Wait for the unit to settle — is-active exits non-zero while the
 # service is still activating, which would trip set -e on a bare call.
 for i in \$(seq 1 15); do

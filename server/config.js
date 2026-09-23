@@ -40,7 +40,7 @@ export const mp = Object.freeze({
   rateLimitMsgsPerSec: int('MP_RATE_LIMIT_MSGS_PER_SEC', 30),
   maxClients: int('MP_MAX_CLIENTS', 500),
   maxPosValue: int('MP_MAX_POS_VALUE', 100_000),
-  maxChatLength: int('MP_MAX_CHAT_length', 500),
+  maxChatLength: int('MP_MAX_CHAT_LENGTH', 500),
   allowedOrigins: list('MP_ALLOWED_ORIGINS', [
     'coresapian.com',
     'game.coresapian.com',

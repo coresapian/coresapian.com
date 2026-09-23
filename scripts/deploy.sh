@@ -2,12 +2,19 @@
 #
 # Coresapian Auto-Versioning Deploy Script v3.0
 #
+# RUN ON: macOS only (uses BSD sed -i '', stat -f, shasum).
+#
+# TRANSPORT: LXC 103 is reached ONLY via the Proxmox host (root@192.168.0.10).
+# Never SSH the LXC IP directly (homelab convention — the Mac can't reach
+# 192.168.0.148 off-LAN). Files go up with scp to the host then pct push;
+# commands run via pct exec.
+#
 # What it does:
 #   1. Hashes all versioned assets → short content-based cache-bust strings
 #   2. Copies .pck and .wasm to content-hashed filenames on the server
 #      (e.g. index-a1b2c3d4.pck) so browsers ALWAYS fetch fresh on deploy
 #   3. Patches COPIES of HTML files (never mutates source) with hashes
-#   4. SCPs everything to LXC 103, reloads nginx, verifies
+#   4. Pushes everything to LXC 103 (via the Proxmox host), reloads nginx, verifies
 #
 # v3.0 changes:
 #   • Root index.html is the sole entry point — no separate /game/ page
@@ -16,8 +23,17 @@
 set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-REMOTE="root@192.168.0.148"
+PROXMOX_HOST="root@192.168.0.10"
+LXC_ID="103"
 REMOTE_ROOT="/var/www/coresapian"
+
+# Push one local file into the LXC: scp to the Proxmox host, then pct push.
+lxc_push() { # lxc_push <local-path> <lxc-abs-path>
+    local src="$1" dest="$2"
+    local tmp="/tmp/lxc-push-$(basename "$dest")"
+    scp -q "$src" "$PROXMOX_HOST:$tmp"
+    ssh "$PROXMOX_HOST" "pct push $LXC_ID '$tmp' '$dest' && rm -f '$tmp'"
+}
 
 # Colors
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
@@ -54,8 +70,9 @@ WASM_HASH=$(hash_file "$PROJECT_ROOT/public/game/index.wasm")
 PCK_SIZE=$(size_file "$PROJECT_ROOT/public/game/index.pck")
 WASM_SIZE=$(size_file "$PROJECT_ROOT/public/game/index.wasm")
 
-# Build version string: YYYYMMDD-HHMM (UTC) — changes every deploy
-BUILD_VERSION="v$(TZ=UTC date '+%Y%m%d-%H%M')"
+# Build version string: YYYYMMDD-HHMMSS (UTC) — changes every deploy
+# (standing convention: seconds included, no 'v' prefix)
+BUILD_VERSION="$(TZ=UTC date '+%Y%m%d-%H%M%S')"
 
 # The executable base name uses the WASM hash (engine loads ${executable}.wasm)
 # mainPack is set separately with the PCK hash (they have DIFFERENT content hashes)
@@ -190,35 +207,35 @@ patch_html "$STAGING/root-index.html" \
 ok "Patched index.html (staged)"
 
 # ─── 4. Deploy to LXC 103 ──────────────────────────────────────────
-log "Deploying to $REMOTE..."
+log "Deploying to LXC $LXC_ID via $PROXMOX_HOST..."
 
 # Shell files (small, safe to upload first)
-scp -q "$PROJECT_ROOT/public/game/game-shell.css" "$REMOTE:$REMOTE_ROOT/game/game-shell.css"
-scp -q "$PROJECT_ROOT/public/game/game-shell.js"  "$REMOTE:$REMOTE_ROOT/game/game-shell.js"
-scp -q "$PROJECT_ROOT/public/game/llm-worker.js"   "$REMOTE:$REMOTE_ROOT/game/llm-worker.js"
-scp -q "$PROJECT_ROOT/public/game/index.js"       "$REMOTE:$REMOTE_ROOT/game/index.js"
+lxc_push "$PROJECT_ROOT/public/game/game-shell.css" "$REMOTE_ROOT/game/game-shell.css"
+lxc_push "$PROJECT_ROOT/public/game/game-shell.js"  "$REMOTE_ROOT/game/game-shell.js"
+lxc_push "$PROJECT_ROOT/public/game/llm-worker.js"   "$REMOTE_ROOT/game/llm-worker.js"
+lxc_push "$PROJECT_ROOT/public/game/index.js"       "$REMOTE_ROOT/game/index.js"
 ok "Shell JS/CSS + LLM worker deployed"
 
 # Audio
-scp -q "$PROJECT_ROOT/assets/audio/orchastra-cinematic-001.mp3" \
-    "$REMOTE:$REMOTE_ROOT/orchastra-cinematic-001.mp3"
+lxc_push "$PROJECT_ROOT/assets/audio/orchastra-cinematic-001.mp3" \
+    "$REMOTE_ROOT/orchastra-cinematic-001.mp3"
 ok "Audio deployed"
 
 # OG social card
-scp -q "$PROJECT_ROOT/public/og-card.png" \
-    "$REMOTE:$REMOTE_ROOT/og-card.png"
+lxc_push "$PROJECT_ROOT/public/og-card.png" \
+    "$REMOTE_ROOT/og-card.png"
 ok "OG card deployed"
 
 # ─── 5. Deploy hashed .pck and .wasm ────────────────────────────────
 log "Deploying hashed engine assets..."
 
 # Upload the base files
-scp -q "$PROJECT_ROOT/public/game/index.pck"  "$REMOTE:$REMOTE_ROOT/game/index.pck"
-scp -q "$PROJECT_ROOT/public/game/index.wasm" "$REMOTE:$REMOTE_ROOT/game/index.wasm"
+lxc_push "$PROJECT_ROOT/public/game/index.pck"  "$REMOTE_ROOT/game/index.pck"
+lxc_push "$PROJECT_ROOT/public/game/index.wasm" "$REMOTE_ROOT/game/index.wasm"
 
 # Upload threaded web worker (needed for GDExtension support)
 if [[ -f "$PROJECT_ROOT/public/game/index.side.wasm" ]]; then
-    scp -q "$PROJECT_ROOT/public/game/index.side.wasm" "$REMOTE:$REMOTE_ROOT/game/index.side.wasm"
+    lxc_push "$PROJECT_ROOT/public/game/index.side.wasm" "$REMOTE_ROOT/game/index.side.wasm"
 fi
 
 # Upload GDExtension wasm binaries to /game/ AND web root /
@@ -227,19 +244,20 @@ fi
 for ext_wasm in "$PROJECT_ROOT/public/game/"lib*.web.*.wasm; do
     if [[ -f "$ext_wasm" ]]; then
         local_name=$(basename "$ext_wasm")
-        scp -q "$ext_wasm" "$REMOTE:$REMOTE_ROOT/game/$local_name"
-        scp -q "$ext_wasm" "$REMOTE:$REMOTE_ROOT/$local_name"
+        lxc_push "$ext_wasm" "$REMOTE_ROOT/game/$local_name"
+        lxc_push "$ext_wasm" "$REMOTE_ROOT/$local_name"
     fi
 done
 
 # Upload audio worklet files (Godot loads these as \${executable}.audio.worklet.js etc.)
-scp -q "$PROJECT_ROOT/public/game/index.audio.position.worklet.js" \
-    "$REMOTE:$REMOTE_ROOT/game/index.audio.position.worklet.js"
-scp -q "$PROJECT_ROOT/public/game/index.audio.worklet.js" \
-    "$REMOTE:$REMOTE_ROOT/game/index.audio.worklet.js"
+lxc_push "$PROJECT_ROOT/public/game/index.audio.position.worklet.js" \
+    "$REMOTE_ROOT/game/index.audio.position.worklet.js"
+lxc_push "$PROJECT_ROOT/public/game/index.audio.worklet.js" \
+    "$REMOTE_ROOT/game/index.audio.worklet.js"
 
 # Create content-hashed copies on the server (also keep the base name as fallback)
-ssh "$REMOTE" bash -s <<REMOTE_SETUP
+# stdin flows through ssh -> pct exec -> the container's bash.
+ssh "$PROXMOX_HOST" "pct exec $LXC_ID -- bash -s" <<REMOTE_SETUP
 set -e
 cd $REMOTE_ROOT/game
 
@@ -291,12 +309,12 @@ ok "Hashed .pck and .wasm deployed"
 # This prevents a race where live HTML points to hashed files that
 # don't exist yet if an earlier SCP times out.
 log "Deploying HTML (all assets verified present)..."
-scp -q "$STAGING/root-index.html" "$REMOTE:$REMOTE_ROOT/index.html"
+lxc_push "$STAGING/root-index.html" "$REMOTE_ROOT/index.html"
 ok "HTML deployed"
 
 # ─── 6. Reload nginx ───────────────────────────────────────────────
 log "Reloading nginx..."
-ssh "$REMOTE" "nginx -t 2>&1 && systemctl reload nginx"
+ssh "$PROXMOX_HOST" "pct exec $LXC_ID -- bash -c 'nginx -t 2>&1 && systemctl reload nginx'"
 ok "nginx reloaded"
 
 # ─── 7. Verify ─────────────────────────────────────────────────────
@@ -351,7 +369,7 @@ if [ $VERIFY_FAILED -ne 0 ]; then
     exit 1
 fi
 
-ssh "$REMOTE" bash -s <<VERIFY
+ssh "$PROXMOX_HOST" "pct exec $LXC_ID -- bash -s" <<VERIFY
 set -e
 echo "  PCK:  \$(stat -c%s /var/www/coresapian/game/index.pck) bytes"
 echo "  WASM: \$(stat -c%s /var/www/coresapian/game/index.wasm) bytes"

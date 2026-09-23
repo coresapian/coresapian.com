@@ -25,6 +25,10 @@ var _send_interval: float = 0.05
 var _remote_players: Dictionary = {}
 var _reconnect_timer: float = 0.0
 var _wants_reconnect: bool = false
+# Reconnect backoff: 1s doubling to a 30s cap with jitter, so clients don't
+# retry in lockstep after a relay restart (thundering herd).
+var _reconnect_delay: float = 1.0
+var _shutdown_stagger: float = 0.0 # one-off 0–5s stagger after a server 'shutdown' notice
 
 var _local_player: CharacterBody3D = null
 var _local_head: Node3D = null
@@ -34,7 +38,8 @@ var _send_msg: Dictionary = {
 }
 
 const _STALE_TIMEOUT: float = 5.0
-const _RECONNECT_DELAY: float = 3.0
+const _RECONNECT_BASE_DELAY: float = 1.0
+const _RECONNECT_MAX_DELAY: float = 30.0
 
 
 func _ready() -> void:
@@ -79,9 +84,17 @@ func _process(delta: float) -> void:
 	if not _connected and state == WebSocketPeer.STATE_OPEN:
 		_connected = true
 		connected.emit()
+		_reconnect_delay = _RECONNECT_BASE_DELAY
 
 	if _connected and state == WebSocketPeer.STATE_CLOSED:
 		_handle_disconnect()
+		return
+
+	if not _connected and state == WebSocketPeer.STATE_CLOSED:
+		# Handshake failed before we ever connected (relay restarting,
+		# 502/404 on upgrade, ...). Schedule a retry via the guarded
+		# _wants_reconnect path — without this the orbs sit dead forever.
+		_schedule_reconnect()
 		return
 
 	if state == WebSocketPeer.STATE_CONNECTING:
@@ -153,7 +166,9 @@ func _handle_disconnect() -> void:
 
 func _schedule_reconnect() -> void:
 	_wants_reconnect = true
-	_reconnect_timer = _RECONNECT_DELAY
+	_reconnect_timer = _reconnect_delay * (0.5 + randf() * 0.5) + _shutdown_stagger
+	_shutdown_stagger = 0.0
+	_reconnect_delay = minf(_RECONNECT_MAX_DELAY, _reconnect_delay * 2.0)
 
 
 # ── Sending ──────────────────────────────────────────────────────────
@@ -212,6 +227,11 @@ func _on_packet_received(json_string: String) -> void:
 			_remove_player_orb(id)
 			player_left.emit(id)
 			player_count_changed.emit(get_player_count())
+
+		"shutdown":
+			# Server is restarting — add a random 0–5s stagger to the next
+			# reconnect so all clients don't hammer the relay at once.
+			_shutdown_stagger = randf() * 5.0
 
 		"pos":
 			var id := str(msg.get("id", ""))

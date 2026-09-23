@@ -13,15 +13,15 @@ exploration with glowing orbs.
                     │  LXC 103    │
                     │  nginx :80  │
                     └──┬───────┬──┘
-           Static files │       │ /ws/chat (WebSocket)
+           Static files │       │ /ws, /ws/chat, /ws/mp (WebSocket)
               /var/www/ │       │
                        │  ┌────▼─────────────┐
-              ┌────────┘  │ Node.js :3001    │
-              │           │ Anonymous Chat   │
-              ▼           │ (anonymous_      │
-     Godot WebGL build    │  chat_server.js) │
-     (index.html +        └──────────────────┘
-      index.js +
+              ┌────────┘  │ Node.js :8082    │
+              │           │ Unified relay    │
+              ▼           │ (mp_server.js:   │
+     Godot WebGL build    │  multiplayer     │
+     (index.html +        │  orbs + chat)    │
+      index.js +          └──────────────────┘
       index.wasm +
       index.pck)
 ```
@@ -31,10 +31,9 @@ exploration with glowing orbs.
 | # | Service | Stack | Port | systemd Unit | Purpose |
 |---|---------|-------|------|-------------|---------|
 | 1 | Web Server | nginx | 80 | (system) | Static files + WebSocket proxy |
-| 2 | Anonymous Chat | Node.js + `ws` | 3001 | `coresapian-anonymous-chat.service` | Real-time anonymous WebSocket chat |
-| 3 | Multiplayer Orbs | Node.js + `ws` | 8082 | `coresapian-mp.service` | Real-time player position relay |
-| 4 | Health Check | Python 3 + cron | — | `coresapian-health-check.timer` | Status page monitoring |
-| 5 | Godot Dedicated Server | Godot 4.6 headless | 8083 | `coresapian-godot.service` | High-level multiplayer relay (bare PCK) |
+| 2 | Unified Relay | Node.js + `ws` | 8082 | `coresapian-mp.service` | Multiplayer orb positions + real-time chat (v3 merged) |
+| 3 | Health Check | Python 3 + cron | — | `coresapian-health-check.timer` | Status page monitoring |
+| 4 | Godot Dedicated Server | Godot 4.6 headless | 8083 | `coresapian-godot.service` | High-level multiplayer relay (bare PCK) |
 
 ### Dedicated Server Mode
 
@@ -51,8 +50,9 @@ The server binary (`exports/coresapian-server.x86_64`, exported via `scripts/exp
 |------|---------|----------|---------|
 | `/` | `/var/www/coresapian/` | HTTP | Root landing (loads Godot game) |
 | `/game/` | `/var/www/coresapian/game/` | HTTP | Engine assets (wasm, pck, js) |
-| `/ws/chat` | `127.0.0.1:3001` | WebSocket | Anonymous chat |
-| `/ws/mp` | `127.0.0.1:8082` | WebSocket | Multiplayer orbs relay |
+| `/ws` | `127.0.0.1:8082` | WebSocket | Exact-match game client endpoint (unified relay) |
+| `/ws/chat` | `127.0.0.1:8082` | WebSocket | Anonymous chat (unified relay) |
+| `/ws/mp` | `127.0.0.1:8082` | WebSocket | Multiplayer orbs relay (unified relay) |
 
 ## Project Structure
 
@@ -87,14 +87,14 @@ coresapian/
 │   └── favicon.ico
 │
 ├── server/                         # Backend services
-│   ├── mp_server.js                # Multiplayer orbs relay
-│   ├── mp_package.json             # npm manifest for mp_server
-│   ├── coresapian-mp.service       # systemd unit for mp_server
-│   ├── anonymous_chat_server.js    # Node.js WebSocket chat
+│   ├── mp_server.js                # Unified multiplayer + chat relay (v3)
+│   ├── config.js                   # Env-overridable relay config
 │   ├── package.json                # npm manifest (ws)
-│   ├── coresapian-anonymous-chat.service  # systemd unit
-│   ├── deploy_anonymous_chat.sh    # Deployment script
-│   └── nginx_coresapian.conf       # Canonical nginx config
+│   ├── nginx_coresapian.conf       # Canonical nginx site config
+│   └── templates/                  # Rendered by scripts/deploy-servers.sh
+│       ├── mp-server.service       # systemd unit template
+│       ├── nginx-websocket.conf    # WS proxy snippet template
+│       └── fail2ban-jail.conf      # Fail2Ban jail template
 │
 ├── scripts/                        # Ops scripts
 │   ├── deploy.sh                   # Auto-versioning deploy (hashes + scp)
@@ -115,7 +115,8 @@ coresapian/
 
 ### Prerequisites
 - Godot 4.6 stable with web export templates
-- SSH access to LXC 103 (root@192.168.0.148)
+- SSH to the Proxmox host (root@192.168.0.10) — LXC 103 is reached via
+  `pct exec 103` only; never SSH the LXC IP directly
 - Node.js 20+ on LXC 103
 
 ### Web Build + Deploy
@@ -124,45 +125,65 @@ coresapian/
 bash scripts/export_godot_web.sh
 
 # Deploy with auto-versioning (content hashes for cache busting)
+# Runs on macOS; reaches LXC 103 through the Proxmox host
 bash scripts/deploy.sh
 ```
 
-### Chat Server Deploy
+### Relay Deploy
 ```bash
-bash server/deploy_anonymous_chat.sh
+# Deploy the unified relay (mp_server.js + systemd + nginx WS routes)
+bash scripts/deploy-servers.sh
 ```
 
 ### Verify
 ```bash
 # Web
 curl -I https://coresapian.com/
-# Chat server
-systemctl status coresapian-anonymous-chat
+# Relay
+ssh root@192.168.0.10 "pct exec 103 -- systemctl status coresapian-mp"
 # WebSocket
 wscat -c wss://coresapian.com/ws/chat
 ```
 
-## Anonymous Chat Protocol
+## Unified Relay Protocol (v3)
 
-Messages are broadcast to all connected clients. No authentication, no usernames.
+One Node.js `ws` server (`server/mp_server.js`) on port 8082 serves both
+multiplayer positions and chat. Messages are JSON. No authentication, no
+usernames.
 
 ```json
 // Client → Server
-{"text": "hello world"}
+{"type": "pos", "x": 1.2, "y": 0.0, "z": -3.4, "ry": 0.5, "rx": 0.1}
+{"type": "chat", "text": "hello world", "name": "optional"}
+{"text": "hello world"}                       // panel style (no type) also works
+{"type": "typing", "name": "optional"}
+{"type": "hello", "name": "optional"}     // join announcement (once)
+{"type": "ping", "t": 1234567890}
 
-// Server → Client (broadcast)
-{"text": "hello world", "timestamp": "2026-06-05T14:32:00Z"}
-
-// On connect: receive history
-[{"text": "...", "timestamp": "..."}, ...]
+// Server → Client
+{"type": "init", "id": "p1a2b"}
+{"type": "history", "messages": [ ... ]}  // last chat messages, on connect
+{"type": "join", "id": "p1a2b"}
+{"type": "leave", "id": "p1a2b"}
+{"type": "pos", "id": "p1a2b", "x": 1.2, "y": 0.0, "z": -3.4, "ry": 0.5, "rx": 0.1}
+{"type": "chat", "id": "p1a2b:1727212345678:42", "name": "someone", "text": "hello", "timestamp": "2026-09-22T...Z"}
+{"type": "typing", "id": "p1a2b", "name": "someone"}
+{"type": "system", "message": "..."}
+{"type": "pong", "t": 1234567890}          // echo to sender only
+{"type": "shutdown"}                        // server is restarting
 ```
 
+- Chat `id` is a **unique per-message id** (`<playerId>:<ms>:<seq>`), not
+  the sender id — clients dedupe on it
+- History is sent as `{"type": "history", "messages": [...]}`, not a
+  bare array
 - Max 200 messages persisted in `/data/chatlog.json`
 - Max 500 characters per message
-- Max 500 concurrent clients
-- Rate limit: 10 messages per 10 seconds per client
-- 30-second ping/pong heartbeat
-- Debounced saves (2s coalesce)
+- Max 500 concurrent clients; **20 concurrent WS connections per IP**
+  (nginx `limit_conn` on the `/ws*` locations)
+- Rate limits: 30 messages/second per client (all types), 1 chat message
+  per second per client, typing indicators throttled
+- 15-second ping/pong heartbeat
 
 ## Security
 

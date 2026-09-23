@@ -36,8 +36,9 @@ USER_AGENT=$(echo "$LINE" | grep -oP '" "\K[^"]+(?="$)' || echo "unknown")
 mkdir -p "$(dirname "$HONEYPOT_LOG")"
 printf '%s | IP: %s | Method: %s | Path: %s | UA: %s | Raw: %s\n' "$(date +%Y-%m-%d_%H:%M:%S)" "$ATTACKER_IP" "$METHOD" "$PATH_HIT" "$USER_AGENT" "$LINE" >> "$HONEYPOT_LOG"
 
-# ── Email alert ──
-if [ -n "$ALERT_EMAIL" ]; then
+# ── Email alert (best-effort: a missing/broken sendmail must never abort
+#     the script before the Heimdall collector POST below) ──
+if [ -n "$ALERT_EMAIL" ] && command -v sendmail >/dev/null 2>&1; then
     {
         echo "Subject: [HONEYPOT] Alert on coresapian.com — $ATTACKER_IP"
         echo "To: $ALERT_EMAIL"
@@ -54,7 +55,7 @@ if [ -n "$ALERT_EMAIL" ]; then
         echo "  UA:       $USER_AGENT"
         echo "  Action:   IP banned for 7 days (Fail2Ban)"
         echo ""
-    } | sendmail "$ALERT_EMAIL"
+    } | sendmail "$ALERT_EMAIL" || true
 fi
 
 # ── Reverse DNS lookup for context (best-effort) ──
@@ -71,7 +72,7 @@ echo "  └─ rDNS: $RDNS | Geo: $GEO" >> "$HONEYPOT_LOG"
 
 # Report to Heimdall collector (safe JSON encoding via Python)
 PAYLOAD=$(python3 -c "import json,sys; print(json.dumps({'site':'coresapian.com','ip':sys.argv[1],'method':sys.argv[2],'path':sys.argv[3],'user_agent':sys.argv[4],'timestamp':sys.argv[5],'action':'banned'}))" "$ATTACKER_IP" "$METHOD" "$PATH_HIT" "$USER_AGENT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)")
-curl -s -X POST 'http://192.168.0.150:9090/api/incident' \
+curl -s -X POST 'http://192.168.0.156:9090/api/incident' \
   -H 'Content-Type: application/json' \
   -d "$PAYLOAD" >/dev/null 2>&1 || true
 

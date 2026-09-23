@@ -23,7 +23,8 @@
 //     { "type": "join", "id" }                         another player joined
 //     { "type": "leave", "id" }                        player disconnected
 //     { "type": "pos", "id", "x", "y", "z", "ry", "rx" }
-//     { "type": "chat", "id", "name", "text", "timestamp" }
+//     { "type": "chat", "id", "name", "text", "timestamp" }  (id is a
+//       unique per-message id `<playerId>:<ms>:<seq>` — never the sender id)
 //     { "type": "typing", "id", "name" }              someone is typing
 //     { "type": "system", "message" }                   join/leave/rate-limit notices
 //     { "type": "pong", "t" }                           ping echo (sender only)
@@ -186,6 +187,10 @@ console.log(`[relay] Chat history: ${LOG_FILE} (${history.length} messages loade
 
 const clients = new Map(); // ws → client meta
 
+// Monotonic per-message counter — combined with the sender id into a unique
+// chat message id. The chat client dedupes on msg.id, so a sender-id id
+// would silently drop every message after each sender's first (C1).
+
 function playerCount() { return clients.size; }
 
 function sendTo(ws, json) {
@@ -238,6 +243,8 @@ const wss = new WebSocketServer({
 
 // ── Chat message path (shared by mp-style and panel-style messages) ─
 
+let chatMsgSeq = 0;
+
 function handleChat(ws, client, text, name) {
     // Anti-spam: 1 chat message per second per client.
     const nowMs = Date.now();
@@ -252,14 +259,16 @@ function handleChat(ws, client, text, name) {
 
     const message = {
         type: 'chat',
-        id: client.id,
+        // Unique per-message id (<senderId>:<ms>:<seq>) — the chat client
+        // dedupes on msg.id, so the id must NOT be the sender's player id.
+        id: `${client.id}:${Date.now()}:${chatMsgSeq++}`,
         name: senderName,
         text,
         timestamp: new Date().toISOString(),
     };
 
     history.push(message);
-    if (history.length > MAX_HISTORY * 2) history = history.slice(-MAX_HISTORY);
+    if (history.length > MAX_HISTORY) history = history.slice(-MAX_HISTORY);
     saveHistory();
 
     // Broadcast to everyone INCLUDING the sender — the chat panel renders

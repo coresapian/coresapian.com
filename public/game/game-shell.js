@@ -31,7 +31,10 @@ const chatBadge = document.getElementById("chat-badge");
 const GODOT_CONFIG = window.__GODOT_CONFIG;
 const THREADS_ENABLED = false;
 const PROGRESS_STALL_TIMEOUT_MS = 120_000;
-const CHAT_RECONNECT_DELAY_MS = 3_000;
+// Chat reconnect: exponential backoff 1s -> 30s cap with jitter, so all
+// clients don't retry in lockstep after a relay restart (thundering herd).
+const CHAT_RECONNECT_BASE_MS = 1_000;
+const CHAT_RECONNECT_MAX_MS = 30_000;
 
 // ── State ──────────────────────────────────────────────────────────
 let gameLoaded = false;
@@ -41,6 +44,8 @@ let chatOpened = false;
 let chatConnected = false;
 let unreadCount = 0;
 let chatReconnectTimer = 0;
+let chatReconnectAttempts = 0;
+let chatShutdownDelayMs = 0; // one-off 0–5s stagger after a server 'shutdown' notice
 let audioActivated = false;
 
 // LLM worker state
@@ -164,14 +169,21 @@ function connectChat() {
     return;
   }
 
-  chatWs.onopen = () => setChatStatus("connected");
+  chatWs.onopen = () => {
+    chatReconnectAttempts = 0;
+    setChatStatus("connected");
+  };
 
   chatWs.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
       if (Array.isArray(data)) {
+        // Legacy history format (pre-v3 relay); kept for safety.
         ChatVirtualList.replaceAll(data);
-        scrollChatToBottom();
+        scrollChatToBottom(true);
+      } else if (data && data.type === "history") {
+        ChatVirtualList.replaceAll(Array.isArray(data.messages) ? data.messages : []);
+        scrollChatToBottom(true);
       } else if (data && typeof data.text === "string") {
         appendChatMessage(data);
         scrollChatToBottom();
@@ -179,6 +191,10 @@ function connectChat() {
       } else if (data && data.type === "system") {
         appendSystemMessage(data.message || "");
         scrollChatToBottom();
+      } else if (data && data.type === "shutdown") {
+        // Server is restarting — add a random 0–5s stagger so clients
+        // don't all reconnect in lockstep once it comes back up.
+        chatShutdownDelayMs = Math.random() * 5000;
       }
     } catch (err) {
       console.warn("[chat] parse error:", err);
@@ -196,10 +212,14 @@ function connectChat() {
 
 function scheduleChatReconnect() {
   if (chatReconnectTimer) return;
+  const exp = Math.min(CHAT_RECONNECT_MAX_MS, CHAT_RECONNECT_BASE_MS * 2 ** chatReconnectAttempts);
+  const delay = exp * (0.5 + Math.random() * 0.5) + chatShutdownDelayMs;
+  chatShutdownDelayMs = 0;
   chatReconnectTimer = setTimeout(() => {
     chatReconnectTimer = 0;
     if (chatOpened) connectChat();
-  }, CHAT_RECONNECT_DELAY_MS);
+  }, delay);
+  chatReconnectAttempts++;
 }
 
 function sendChatMessage() {
@@ -423,12 +443,6 @@ function formatTime(timestamp) {
   } catch { return ""; }
 }
 
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 const ChatVirtualList = (function () {
   const buffer = [];          // all message objects
   const pool = [];              // recycled DOM nodes
@@ -542,8 +556,18 @@ function appendSystemMessage(text) {
   chatMessages.appendChild(div);
 }
 
-function scrollChatToBottom() {
-  if (chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+// Stick-to-bottom only when the user is already near the bottom —
+// scrolling up to read history is no longer yanked on every message.
+const CHAT_STICK_THRESHOLD_PX = 120;
+
+function scrollChatToBottom(force) {
+  if (!chatMessages) return;
+  if (force) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return;
+  }
+  const distance = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight;
+  if (distance < CHAT_STICK_THRESHOLD_PX) chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function incrementUnread() {

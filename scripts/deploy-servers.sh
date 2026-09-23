@@ -126,17 +126,6 @@ echo "==> Relay restarted. Verifying health..."
 ssh "$PROXMOX_HOST" "pct exec $LXC_ID -- curl -s http://127.0.0.1:$MP_PORT/" | grep -q '"ok":true' \
     && echo "  ✓ Relay health OK" || { echo "  ✗ Relay health FAILED"; exit 1; }
 
-echo "==> Installing nginx websocket snippet on LXC $LXC_ID..."
-SNIPPET_TMP="/tmp/$SITE_SLUG-relay.conf"
-scp -q "$RENDER_DIR/$SITE_SLUG-relay.conf" "$PROXMOX_HOST:$SNIPPET_TMP"
-ssh "$PROXMOX_HOST" "pct push $LXC_ID $SNIPPET_TMP /etc/nginx/snippets/$SITE_SLUG-relay.conf && rm -f $SNIPPET_TMP"
-if ssh "$PROXMOX_HOST" "pct exec $LXC_ID -- nginx -t"; then
-    ssh "$PROXMOX_HOST" "pct exec $LXC_ID -- nginx -s reload"
-    echo "  ✓ nginx snippet installed and reloaded"
-else
-    echo "  ✗ nginx -t FAILED - snippet pushed but nginx NOT reloaded" >&2
-    exit 1
-fi
 echo ""
 echo "  ✓ Done — unified relay v3 running on LXC $LXC_ID"
 echo ""

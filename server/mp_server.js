@@ -20,6 +20,8 @@
 //   Server → Client:
 //     { "type": "init", "id" }                         assigned player id (first)
 //     { "type": "history", "messages": [...] }         last chat messages (if any)
+//     { "type": "roster", "players": [{ "id", "name"? }] }  players already
+//       connected (sent once, right after init/history)
 //     { "type": "join", "id" }                         another player joined
 //     { "type": "leave", "id" }                        player disconnected
 //     { "type": "pos", "id", "x", "y", "z", "ry", "rx" }
@@ -231,13 +233,14 @@ const wss = new WebSocketServer({
     server,
     perMessageDeflate: false,
     maxPayload: 4096,
+    // Origin policy: the relay is anonymous-by-design; the origin allowlist
+    // is abuse-mitigation, not authentication. Non-browser clients that send
+    // no Origin are rejected unless MP_ALLOW_ORIGINLESS=1.
     verifyClient: (info, cb) => {
         const origin = info.origin || info.req.headers.origin || '';
-        if (!origin) return cb(true); // allow connections without origin (game clients, curl)
-        if (config.allowedOrigins.length === 0) return cb(true);
         if (validateOrigin(origin, config.allowedOrigins)) return cb(true);
-        console.warn(`[relay] Rejected connection from origin: ${origin}`);
-        cb(false, 401, 'Forbidden origin');
+        console.warn(`[relay] Rejected connection from origin: ${origin || '<none>'}`);
+        cb(false, 403, 'Forbidden origin');
     },
 });
 
@@ -304,6 +307,15 @@ wss.on('connection', (ws) => {
     if (history.length > 0) {
         sendTo(ws, { type: 'history', messages: history.slice(-MAX_HISTORY) });
     }
+    // Roster: the newcomer never saw 'join' for players who were already
+    // connected, so send who's here now (names included when announced).
+    // Without this, a client joining a non-empty room sees nobody.
+    const roster = [];
+    for (const [, c] of clients) {
+        if (c.id === id) continue;
+        roster.push({ id: c.id, name: c.name });
+    }
+    sendTo(ws, { type: 'roster', players: roster });
     broadcast({ type: 'join', id }, ws);
 
     // ── Handle incoming messages ────────────────────────────────────

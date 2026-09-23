@@ -212,13 +212,19 @@ func _on_packet_received(json_string: String) -> void:
 		"init":
 			_my_id = str(msg.get("id", _my_id))
 
-		"join":
-			var id := str(msg.get("id", ""))
-			if id == "" or id == _my_id or _remote_players.has(id):
+		"roster":
+			# Roster arrives once, right after init: players who were already
+			# connected when we joined. Register each via the same path as
+			# "join" so their orbs exist before their "pos" packets arrive.
+			var players: Variant = msg.get("players", [])
+			if not players is Array:
 				return
-			_create_and_register_orb(id)
-			player_joined.emit(id)
-			player_count_changed.emit(get_player_count())
+			for p in players:
+				if p is Dictionary:
+					_register_remote_player(str(p.get("id", "")))
+
+		"join":
+			_register_remote_player(str(msg.get("id", "")))
 
 		"leave":
 			var id := str(msg.get("id", ""))
@@ -235,8 +241,15 @@ func _on_packet_received(json_string: String) -> void:
 
 		"pos":
 			var id := str(msg.get("id", ""))
-			if not _remote_players.has(id):
+			if id == "" or id == _my_id:
 				return
+			if not _remote_players.has(id):
+				# Missed the join/roster (or it arrived out of order) —
+				# create the orb lazily instead of silently dropping this
+				# player's position updates.
+				_register_remote_player(id)
+				if not _remote_players.has(id):
+					return
 			var entry: Dictionary = _remote_players[id]
 			var prev_pos: Vector3 = entry.get("target_pos", Vector3.ZERO)
 			var prev_ry: float = entry.get("target_rot_y", 0.0)
@@ -296,6 +309,17 @@ func _remove_player_orb(id: String) -> void:
 	if orb and is_instance_valid(orb):
 		orb.queue_free()
 	_remote_players.erase(id)
+
+
+func _register_remote_player(id: String) -> void:
+	# Single registration path used by "join", "roster", and lazy "pos".
+	if id == "" or id == _my_id or _remote_players.has(id):
+		return
+	_create_and_register_orb(id)
+	if not _remote_players.has(id):
+		return # orb creation failed (no scene to parent to yet)
+	player_joined.emit(id)
+	player_count_changed.emit(get_player_count())
 
 
 # ── Public API ───────────────────────────────────────────────────────

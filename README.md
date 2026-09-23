@@ -163,6 +163,7 @@ usernames.
 // Server → Client
 {"type": "init", "id": "p1a2b"}
 {"type": "history", "messages": [ ... ]}  // last chat messages, on connect
+{"type": "roster", "players": [{"id": "p1a2b", "name": "someone"}]}  // players already connected (once, after init)
 {"type": "join", "id": "p1a2b"}
 {"type": "leave", "id": "p1a2b"}
 {"type": "pos", "id": "p1a2b", "x": 1.2, "y": 0.0, "z": -3.4, "ry": 0.5, "rx": 0.1}
@@ -194,6 +195,15 @@ usernames.
 - **Honeypot**: Canary paths tarpit attackers + Fail2Ban auto-ban
 - **Chat**: No auth, no PII, rate-limited, anonymous
 - **Servers bind localhost only**: nginx proxies external traffic
+- **Origin policy**: the relay is anonymous-by-design; `MP_ALLOWED_ORIGINS`
+  is an exact-hostname allowlist (abuse-mitigation, not authentication —
+  subdomains must be listed explicitly). Non-browser clients that send no
+  `Origin` are rejected unless `MP_ALLOW_ORIGINLESS=1`.
+- **Env validation**: integer config values are range-checked at startup;
+  out-of-range values abort the relay instead of starting misconfigured.
+- **Real IPs behind the tunnel**: nginx restores visitor IPs from
+  `CF-Connecting-IP` (trusted only because the origin is reachable solely
+  via the Cloudflare Tunnel), so per-IP `limit_conn` works as documented.
 - **No secrets in repo**: All credentials via `.env` (gitignored)
 
 ## License
